@@ -1,0 +1,28 @@
+# PyCharm 自动生成的配置文件（绝对不要上传）
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 虚拟环境（几百MB，绝对不要上传）
+venv/
+env/
+ENV/
+
+# PyInstaller 打包生成的文件（exe在这里，绝对不要上传到代码仓库）
+build/
+dist/
+*.spec
+
+# 系统垃圾文件
+.DS_Store
+Thumbs.db
+*.log
