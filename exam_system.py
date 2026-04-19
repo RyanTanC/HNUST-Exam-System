@@ -12,7 +12,7 @@ def check_for_updates():
         # ====================== 配置信息（已填好，直接用） ======================
         GITHUB_USERNAME = "RyanTanC"
         GITHUB_REPO_NAME = "HNUST-"
-        CURRENT_VERSION = "v1.0.0-beta.1"  # 每次发布新版本时，把这里改成新版本号
+        CURRENT_VERSION = "v1.0.0-beta.2"  # 每次发布新版本时，把这里改成新版本号
         # =========================================================================
 
         repo_api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
