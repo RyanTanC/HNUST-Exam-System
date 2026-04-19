@@ -1,4 +1,63 @@
 import tkinter as tk
+from tkinter import messagebox
+import requests
+import webbrowser
+import sys
+import os
+
+
+def check_for_updates():
+    """检查GitHub上是否有新版本"""
+    try:
+        # ====================== 配置信息（已填好，直接用） ======================
+        GITHUB_USERNAME = "RyanTanC"
+        GITHUB_REPO_NAME = "HNUST-"
+        CURRENT_VERSION = "v1.0.0-beta.1"  # 每次发布新版本时，把这里改成新版本号
+        # =========================================================================
+
+        repo_api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
+        response = requests.get(repo_api_url, timeout=5)
+        response.raise_for_status()
+
+        latest_release = response.json()
+        latest_version = latest_release["tag_name"]
+
+        # 版本比较逻辑：正式版 > 测试版
+        def version_key(v):
+            parts = v.replace("v", "").split("-")
+            main = [int(x) for x in parts[0].split(".")]
+            pre = parts[1] if len(parts) > 1 else "z"  # z确保正式版排在后面
+            return (main, pre)
+
+        if version_key(latest_version) > version_key(CURRENT_VERSION):
+            download_url = latest_release["assets"][0]["browser_download_url"]
+            release_notes = latest_release["body"]
+
+            root = tk.Tk()
+            root.withdraw()
+
+            result = messagebox.askyesno(
+                "发现新版本",
+                f"当前版本：{CURRENT_VERSION}\n"
+                f"最新版本：{latest_version}\n\n"
+                f"更新内容：\n{release_notes}\n\n"
+                "是否立即下载更新？"
+            )
+
+            if result:
+                webbrowser.open(download_url)
+                sys.exit(0)
+
+    except Exception as e:
+        # 检查更新失败不影响程序运行
+        print(f"检查更新失败：{e}")
+
+
+# 在程序最开始调用（必须放在所有代码的最前面）
+if __name__ == "__main__":
+    check_for_updates()
+
+import tkinter as tk
 from tkinter import ttk, messagebox
 import pandas as pd
 import os
