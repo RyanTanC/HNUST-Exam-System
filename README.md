@@ -50,7 +50,7 @@
 ### 1. 下载最新版本
 点击下方链接下载最新的 `HNUST仿真平台.exe`：
 
-**[🚀 点击下载最新版](https://github.com/RyanTanC/HNUST-Exam-System/releases/latest/download/HNUST仿真平台.exe)**
+**[🚀 点击下载最新版](https://github.com/RyanTanC/HNUST-Exam-System/releases)**
 
 > 此链接永远指向最新正式版，推荐收藏。
 
@@ -104,7 +104,7 @@
 如果遇到任何问题或有改进建议，欢迎通过以下方式反馈：
 
 1.  **GitHub Issues**：[提交 Issue](https://github.com/RyanTanC/HNUST-Exam-System/issues)
-2.  **交流群**：（此处可添加你的 QQ 群号或频道链接）
+2.  频道私信
 
 ---
 
@@ -125,6 +125,15 @@
 ### v1.0.0-beta.1 (2026-04-19)
 - 🎉 首个内测版本发布
 - ✨ 实现了考试、判分等核心基础功能
+- ---
+
+## 💖 支持作者
+如果这个工具对你有帮助，欢迎请作者喝杯咖啡 ~~
+
+<div align="center">
+  <img src="pay.jpg" width="200" alt="收款码">
+  <p>感谢你的鼓励与支持 🥰</p>
+</div>
 
 ---
 
