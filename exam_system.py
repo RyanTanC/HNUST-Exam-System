@@ -11,8 +11,8 @@ def check_for_updates():
     try:
         # ====================== 配置信息（已填好，直接用） ======================
         GITHUB_USERNAME = "RyanTanC"
-        GITHUB_REPO_NAME = "HNUST-"
-        CURRENT_VERSION = "v1.0.0-beta.2"  # 每次发布新版本时，把这里改成新版本号
+        GITHUB_REPO_NAME = "HNUST-Exam-System"
+        CURRENT_VERSION = "v1.0.0"  # 每次发布新版本时，把这里改成新版本号
         # =========================================================================
 
         repo_api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
@@ -252,6 +252,8 @@ class HNUSTExamSystem:
         self.question_type_order = ["单选", "填空", "判断", "程序填空", "程序改错"]
         self.is_pure_program_exam = False
         self.pure_program_type_order = ["程序设计"]
+        # ★ 改动1：新增动态题型顺序属性
+        self.active_type_order = []
 
         self._backup_dir = None
 
@@ -524,6 +526,13 @@ class HNUSTExamSystem:
                     q["_global_idx"] = idx
                     q_type = q["题型"]
                     self.question_groups.setdefault(q_type, []).append(q)
+
+            # ★ 改动2：动态生成题型顺序（按题目在表格中首次出现的先后顺序）
+            self.active_type_order = []
+            for q in self.questions:
+                t = q["题型"]
+                if t not in self.active_type_order:
+                    self.active_type_order.append(t)
 
             self.user_answers = {}
             self.current_index = 0
@@ -897,10 +906,8 @@ class HNUSTExamSystem:
         self.nav_panels = {}
         self.nav_q_buttons = {}
 
-        if self.is_pure_program_exam:
-            used_type_order = self.pure_program_type_order
-        else:
-            used_type_order = self.question_type_order
+        # ★ 改动3：使用动态题型顺序
+        used_type_order = self.active_type_order
 
         for idx, q_type in enumerate(used_type_order):
             count = len(self.question_groups.get(q_type, []))
@@ -1000,6 +1007,7 @@ class HNUSTExamSystem:
         self.show_question()
 
     def jump_next_unanswered(self):
+        self._auto_save_current()
         for i in range(self.current_index + 1, len(self.questions)):
             if self.questions[i]["题号"] not in self.user_answers:
                 self.current_index = i
@@ -1254,7 +1262,8 @@ class HNUSTExamSystem:
     def _update_nav_status(self):
         answered_count = len(self.user_answers)
 
-        used_type_order = self.pure_program_type_order if self.is_pure_program_exam else self.question_type_order
+        # ★ 改动4：使用动态题型顺序
+        used_type_order = self.active_type_order
 
         for q_type in used_type_order:
             if q_type not in self.question_groups:
