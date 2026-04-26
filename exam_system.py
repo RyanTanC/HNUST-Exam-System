@@ -12,7 +12,7 @@ def check_for_updates():
         # ====================== 配置信息（已填好，直接用） ======================
         GITHUB_USERNAME = "RyanTanC"
         GITHUB_REPO_NAME = "HNUST-Exam-System"
-        CURRENT_VERSION = "v1.0.0"  # 每次发布新版本时，把这里改成新版本号
+        CURRENT_VERSION = "v1.0.3"  # 每次发布新版本时，把这里改成新版本号
         # =========================================================================
 
         repo_api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
@@ -293,7 +293,7 @@ class HNUSTExamSystem:
         tk.Label(title_bar, text="🌐 HNUST仿真平台",
                  bg=Theme.PRIMARY, fg="white",
                  font=("微软雅黑", 24, "bold")).pack(side=tk.LEFT, padx=30, pady=15)
-        tk.Label(title_bar, text="v1.0 内测版",
+        tk.Label(title_bar, text="v1.0.3",
                  bg=Theme.PRIMARY, fg="#cce0ff",
                  font=("微软雅黑", 12)).pack(side=tk.LEFT, padx=10, pady=15)
 
