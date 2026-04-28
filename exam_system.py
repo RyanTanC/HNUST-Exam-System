@@ -89,6 +89,7 @@ class Theme:
     NAV_ACTIVE = "#cce0ff"
     NAV_CURRENT = "#ff9900"
     NAV_ANSWERED = "#0078d7"
+    NAV_MARKED = "#ff6600"
     FONT = ("微软雅黑", 11)
     FONT_BOLD = ("微软雅黑", 11, "bold")
     FONT_TITLE = ("微软雅黑", 12, "bold")
@@ -239,6 +240,7 @@ class HNUSTExamSystem:
         self.current_index = 0
         self.user_answers = {}
         self.score = 0
+        self.marked_questions = set()
         self.exam_time = 60 * 60
         self.remaining_time = self.exam_time
         self.timer_running = False
@@ -535,6 +537,7 @@ class HNUSTExamSystem:
                     self.active_type_order.append(t)
 
             self.user_answers = {}
+            self.marked_questions = set()
             self.current_index = 0
             self.score = 0
             self.remaining_time = self.exam_time
@@ -641,8 +644,9 @@ class HNUSTExamSystem:
 
         tk.Button(bottom_bar, text="重做", **btn_style, bg=Theme.BG,
                   command=self.reset_program_file).pack(side=tk.LEFT, padx=5)
-        tk.Button(bottom_bar, text="标记试题", **btn_style, bg=Theme.BG,
-                  command=self.not_implemented).pack(side=tk.LEFT, padx=5)
+        self.mark_btn = tk.Button(bottom_bar, text="标记试题", **btn_style, bg=Theme.BG,
+                  command=self.toggle_mark)
+        self.mark_btn.pack(side=tk.LEFT, padx=5)
         tk.Button(bottom_bar, text="答案", **btn_style, bg=Theme.BG,
                   command=self.show_answer).pack(side=tk.LEFT, padx=5)
         tk.Button(bottom_bar, text="试题解析", **btn_style, bg=Theme.BG,
@@ -711,6 +715,11 @@ class HNUSTExamSystem:
 
         if not program_file:
             messagebox.showinfo("提示", "该题目没有对应的程序文件")
+            return
+
+        # 安全检查：防止路径穿越
+        if ".." in program_file or program_file.startswith(("/", "\\")):
+            messagebox.showerror("错误", f"非法的文件路径：{program_file}")
             return
 
         exam_dir = os.path.dirname(self.current_exam_file)
@@ -1261,6 +1270,7 @@ class HNUSTExamSystem:
 
     def _update_nav_status(self):
         answered_count = len(self.user_answers)
+        marked_count = len(self.marked_questions)
 
         # ★ 改动4：使用动态题型顺序
         used_type_order = self.active_type_order
@@ -1276,18 +1286,38 @@ class HNUSTExamSystem:
                     continue
                 btn = self.nav_q_buttons[global_idx]
 
+                # 基础颜色逻辑
                 if global_idx == self.current_index:
-                    btn.config(bg=Theme.NAV_CURRENT, fg="white",
-                               font=("微软雅黑", 9, "bold"))
+                    bg_color = Theme.NAV_CURRENT
+                    fg_color = "white"
+                    font = ("微软雅黑", 9, "bold")
                 elif global_num in self.user_answers:
-                    btn.config(bg=Theme.NAV_ANSWERED, fg="white",
-                               font=("微软雅黑", 9))
+                    bg_color = Theme.NAV_ANSWERED
+                    fg_color = "white"
+                    font = ("微软雅黑", 9)
                 else:
-                    btn.config(bg="white", fg=Theme.TEXT,
-                               font=("微软雅黑", 9))
+                    bg_color = "white"
+                    fg_color = Theme.TEXT
+                    font = ("微软雅黑", 9)
+
+                # 标记状态覆盖逻辑（如果是标记的，改变文字颜色或加前缀）
+                btn_text = f"  第{type_idx + 1}题（{global_num}）"
+                if global_idx in self.marked_questions:
+                    btn_text = "🚩" + btn_text.strip()
+                    if global_idx != self.current_index and global_num not in self.user_answers:
+                        fg_color = Theme.NAV_MARKED
+                
+                btn.config(text=btn_text, bg=bg_color, fg=fg_color, font=font)
+
+        # 更新标记按钮文字
+        if hasattr(self, 'mark_btn'):
+            if self.current_index in self.marked_questions:
+                self.mark_btn.config(text="取消标记", fg=Theme.NAV_MARKED)
+            else:
+                self.mark_btn.config(text="标记试题", fg=Theme.TEXT)
 
         self.status_label.config(
-            text=f"未答 {len(self.questions) - answered_count}，已答 {answered_count}，标记 0")
+            text=f"未答 {len(self.questions) - answered_count}，已答 {answered_count}，标记 {marked_count}")
         self._update_progress()
 
     def _update_progress(self):
@@ -1331,6 +1361,13 @@ class HNUSTExamSystem:
         if self.current_index < len(self.questions) - 1:
             self.current_index += 1
             self.show_question()
+
+    def toggle_mark(self):
+        if self.current_index in self.marked_questions:
+            self.marked_questions.remove(self.current_index)
+        else:
+            self.marked_questions.add(self.current_index)
+        self._update_nav_status()
 
     def show_answer(self):
         q = self.questions[self.current_index]
@@ -1474,6 +1511,7 @@ class HNUSTExamSystem:
             ("总题数", str(total), Theme.TEXT),
             ("已作答", str(answered), Theme.SUCCESS),
             ("未作答", str(unanswered), Theme.DANGER if unanswered > 0 else Theme.TEXT),
+            ("标记数", str(len(self.marked_questions)), Theme.NAV_MARKED if len(self.marked_questions) > 0 else Theme.TEXT),
         ]
 
         for label, value, color in stats_data:
