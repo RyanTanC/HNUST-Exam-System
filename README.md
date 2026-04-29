@@ -104,7 +104,7 @@
 如果遇到任何问题或有改进建议，欢迎通过以下方式反馈：
 
 1.  **GitHub Issues**：[提交 Issue](https://github.com/RyanTanC/HNUST-Exam-System/issues)
-2.  频道私信
+2.  QQ频道私信
 
 ---
 
