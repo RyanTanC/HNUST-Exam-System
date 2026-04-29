@@ -1,65 +1,8 @@
 import tkinter as tk
-from tkinter import messagebox
-import requests
-import webbrowser
-import sys
-import os
-
-
-def check_for_updates():
-    """检查GitHub上是否有新版本"""
-    try:
-        # ====================== 配置信息（已填好，直接用） ======================
-        GITHUB_USERNAME = "RyanTanC"
-        GITHUB_REPO_NAME = "HNUST-Exam-System"
-        CURRENT_VERSION = "v1.0.3"  # 每次发布新版本时，把这里改成新版本号
-        # =========================================================================
-
-        repo_api_url = f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
-        response = requests.get(repo_api_url, timeout=5)
-        response.raise_for_status()
-
-        latest_release = response.json()
-        latest_version = latest_release["tag_name"]
-
-        # 版本比较逻辑：正式版 > 测试版
-        def version_key(v):
-            parts = v.replace("v", "").split("-")
-            main = [int(x) for x in parts[0].split(".")]
-            pre = parts[1] if len(parts) > 1 else "z"  # z确保正式版排在后面
-            return (main, pre)
-
-        if version_key(latest_version) > version_key(CURRENT_VERSION):
-            download_url = latest_release["assets"][0]["browser_download_url"]
-            release_notes = latest_release["body"]
-
-            root = tk.Tk()
-            root.withdraw()
-
-            result = messagebox.askyesno(
-                "发现新版本",
-                f"当前版本：{CURRENT_VERSION}\n"
-                f"最新版本：{latest_version}\n\n"
-                f"更新内容：\n{release_notes}\n\n"
-                "是否立即下载更新？"
-            )
-
-            if result:
-                webbrowser.open(download_url)
-                sys.exit(0)
-
-    except Exception as e:
-        # 检查更新失败不影响程序运行
-        print(f"检查更新失败：{e}")
-
-
-# 在程序最开始调用（必须放在所有代码的最前面）
-if __name__ == "__main__":
-    check_for_updates()
-
-import tkinter as tk
 from tkinter import ttk, messagebox
 import pandas as pd
+import requests
+import webbrowser
 import os
 import sys
 import time
@@ -73,6 +16,283 @@ try:
     windll.shcore.SetProcessDpiAwareness(1)
 except:
     pass
+
+
+# =====================================================================
+#  版本更新检查 — 精美弹窗 + 建议更新（非强制，不阻塞启动）
+# =====================================================================
+CURRENT_VERSION = "v1.0.4"
+GITHUB_USERNAME = "RyanTanC"
+GITHUB_REPO_NAME = "HNUST-Exam-System"
+
+_SKIP_VERSION_FILE = os.path.join(os.path.expanduser("~"), ".hnust_exam_skip_ver")
+
+
+def _version_tuple(v):
+    v = v.lstrip("vV")
+    parts = v.split("-")
+    main = tuple(int(x) for x in parts[0].split(".") if x.isdigit())
+    return main
+
+
+def _load_skip_version():
+    try:
+        if os.path.exists(_SKIP_VERSION_FILE):
+            with open(_SKIP_VERSION_FILE, "r", encoding="utf-8") as f:
+                return f.read().strip()
+    except Exception:
+        pass
+    return ""
+
+
+def _save_skip_version(ver):
+    try:
+        with open(_SKIP_VERSION_FILE, "w", encoding="utf-8") as f:
+            f.write(ver)
+    except Exception:
+        pass
+
+
+def _fetch_update_info():
+    try:
+        repo_api_url = (
+            f"https://api.github.com/repos/{GITHUB_USERNAME}/{GITHUB_REPO_NAME}/releases/latest"
+        )
+        response = requests.get(repo_api_url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        latest_version = data.get("tag_name", "")
+
+        if not latest_version:
+            return None
+
+        if _version_tuple(latest_version) <= _version_tuple(CURRENT_VERSION):
+            return None
+
+        if _load_skip_version() == latest_version:
+            print(f"[更新检查] 用户已跳过版本 {latest_version}，跳过提示")
+            return None
+
+        release_notes = (data.get("body", "") or "").strip() or "暂无更新日志"
+
+        download_url = ""
+        assets = data.get("assets", [])
+        if assets:
+            download_url = assets[0].get("browser_download_url", "")
+        if not download_url:
+            download_url = data.get("html_url", "")
+
+        published = data.get("published_at", "")
+        if published:
+            try:
+                from datetime import datetime
+                dt = datetime.strptime(published, "%Y-%m-%dT%H:%M:%SZ")
+                published = dt.strftime("%Y年%m月%d日 %H:%M")
+            except Exception:
+                pass
+
+        return {
+            "latest_ver": latest_version,
+            "release_notes": release_notes,
+            "download_url": download_url,
+            "published_at": published,
+        }
+
+    except requests.exceptions.Timeout:
+        print("[更新检查] 请求超时，跳过")
+    except requests.exceptions.ConnectionError:
+        print("[更新检查] 网络连接失败，跳过")
+    except requests.exceptions.HTTPError as e:
+        print(f"[更新检查] HTTP 错误: {e}")
+    except Exception as e:
+        print(f"[更新检查] 未知错误: {type(e).__name__}: {e}")
+
+    return None
+
+
+def _show_update_dialog(parent, info):
+    win = tk.Toplevel(parent)
+    win.title("发现新版本")
+    win.resizable(False, False)
+    win.configure(bg="#ffffff")
+    win.attributes("-topmost", True)
+
+    WIN_W, WIN_H = 520, 580
+    win.update_idletasks()
+    sx = (win.winfo_screenwidth() - WIN_W) // 2
+    sy = (win.winfo_screenheight() - WIN_H) // 2
+    win.geometry(f"{WIN_W}x{WIN_H}+{sx}+{sy}")
+
+    icon_path = get_resource_path("icon.ico")
+    if os.path.exists(icon_path):
+        try:
+            win.iconbitmap(icon_path)
+        except Exception:
+            pass
+
+    BG = "#ffffff"
+    PRIMARY = "#2563eb"
+    PRIMARY_HOVER = "#1d4ed8"
+    DANGER = "#dc2626"
+    SURFACE = "#f1f5f9"
+    BORDER = "#e2e8f0"
+    TEXT = "#1e293b"
+    MUTED = "#64748b"
+    GREEN = "#16a34a"
+
+    current_ver = CURRENT_VERSION
+    latest_ver = info["latest_ver"]
+    release_notes = info["release_notes"]
+    download_url = info["download_url"]
+    published_at = info.get("published_at", "")
+
+    header = tk.Frame(win, bg=PRIMARY, height=100)
+    header.pack(fill=tk.X)
+    header.pack_propagate(False)
+
+    icon_circle = tk.Canvas(header, width=56, height=56, bg=PRIMARY, highlightthickness=0)
+    icon_circle.pack(side=tk.LEFT, padx=(30, 15), pady=22)
+    icon_circle.create_oval(2, 2, 54, 54, fill="#ffffff", outline="#ffffff", width=2)
+    icon_circle.create_text(28, 28, text="↑", font=("微软雅黑", 22, "bold"), fill=PRIMARY)
+
+    header_text = tk.Frame(header, bg=PRIMARY)
+    header_text.pack(side=tk.LEFT, pady=22)
+
+    tk.Label(header_text, text="发现新版本",
+             font=("微软雅黑", 18, "bold"), bg=PRIMARY, fg="#ffffff").pack(anchor="w")
+    tk.Label(header_text, text=f"v{current_ver.lstrip('v')} → {latest_ver}",
+             font=("微软雅黑", 11), bg=PRIMARY, fg="#bfdbfe").pack(anchor="w")
+
+    body = tk.Frame(win, bg=BG)
+    body.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+
+    info_card = tk.Frame(body, bg=SURFACE, bd=0)
+    info_card.pack(fill=tk.X, padx=24, pady=(20, 0))
+
+    info_grid = tk.Frame(info_card, bg=SURFACE)
+    info_grid.pack(padx=16, pady=14, anchor="w")
+
+    info_items = [
+        ("当前版本", current_ver, MUTED),
+        ("最新版本", latest_ver, GREEN),
+    ]
+    if published_at:
+        info_items.append(("发布时间", published_at, MUTED))
+
+    for i, (label, value, color) in enumerate(info_items):
+        tk.Label(info_grid, text=label + "：",
+                 font=("微软雅黑", 10), bg=SURFACE, fg=MUTED,
+                 anchor="e", width=10).grid(row=i, column=0, sticky="e", pady=3)
+        tk.Label(info_grid, text=value,
+                 font=("微软雅黑", 10, "bold"), bg=SURFACE, fg=color,
+                 anchor="w").grid(row=i, column=1, sticky="w", pady=3, padx=(8, 0))
+
+    tk.Label(body, text="更新日志",
+             font=("微软雅黑", 11, "bold"), bg=BG, fg=TEXT,
+             anchor="w").pack(fill=tk.X, padx=24, pady=(16, 6))
+
+    notes_frame = tk.Frame(body, bg=BG, bd=1, relief=tk.SOLID, highlightbackground=BORDER,
+                           highlightthickness=1)
+    notes_frame.pack(fill=tk.BOTH, expand=True, padx=24, pady=(0, 12))
+
+    notes_canvas = tk.Canvas(notes_frame, bg="#fafbfc", highlightthickness=0)
+    notes_scrollbar = ttk.Scrollbar(notes_frame, orient="vertical", command=notes_canvas.yview)
+    notes_inner = tk.Frame(notes_canvas, bg="#fafbfc")
+
+    notes_canvas.create_window((0, 0), window=notes_inner, anchor="nw")
+    notes_canvas.configure(yscrollcommand=notes_scrollbar.set)
+    notes_inner.bind("<Configure>",
+                     lambda e: notes_canvas.configure(scrollregion=notes_canvas.bbox("all")))
+
+    notes_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    notes_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    for line in release_notes.splitlines():
+        line = line.strip()
+        if not line:
+            tk.Label(notes_inner, text="", bg="#fafbfc", height=1).pack()
+            continue
+        if line.startswith("### "):
+            tk.Label(notes_inner, text=line[4:],
+                     font=("微软雅黑", 10, "bold"), bg="#fafbfc", fg=TEXT,
+                     anchor="w", wraplength=440, justify="left").pack(fill=tk.X, padx=12, pady=(8, 2))
+        elif line.startswith("## "):
+            tk.Label(notes_inner, text=line[3:],
+                     font=("微软雅黑", 11, "bold"), bg="#fafbfc", fg=TEXT,
+                     anchor="w", wraplength=440, justify="left").pack(fill=tk.X, padx=12, pady=(8, 2))
+        elif line.startswith("- ") or line.startswith("* "):
+            tk.Label(notes_inner, text=f"  •  {line[2:]}",
+                     font=("微软雅黑", 10), bg="#fafbfc", fg=TEXT,
+                     anchor="w", wraplength=430, justify="left").pack(fill=tk.X, padx=16, pady=1)
+        else:
+            tk.Label(notes_inner, text=line,
+                     font=("微软雅黑", 10), bg="#fafbfc", fg=TEXT,
+                     anchor="w", wraplength=440, justify="left").pack(fill=tk.X, padx=12, pady=1)
+
+    def _mw(e):
+        if sys.platform == "darwin":
+            notes_canvas.yview_scroll(-e.delta, "units")
+        else:
+            notes_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units")
+
+    notes_canvas.bind("<MouseWheel>", _mw)
+    notes_canvas.bind("<Button-4>", lambda e: notes_canvas.yview_scroll(-3, "units"))
+    notes_canvas.bind("<Button-5>", lambda e: notes_canvas.yview_scroll(3, "units"))
+
+    btn_bar = tk.Frame(win, bg=BG, height=80)
+    btn_bar.pack(fill=tk.X, side=tk.BOTTOM)
+    tk.Frame(btn_bar, bg=BORDER, height=1).pack(fill=tk.X)
+
+    btn_inner = tk.Frame(btn_bar, bg=BG)
+    btn_inner.pack(pady=12)
+
+    def _on_update():
+        if download_url:
+            webbrowser.open(download_url)
+        win.destroy()
+
+    def _on_skip():
+        _save_skip_version(latest_ver)
+        win.destroy()
+
+    def _on_continue():
+        win.destroy()
+
+    win.protocol("WM_DELETE_WINDOW", _on_continue)
+
+    skip_btn = tk.Label(btn_inner, text="  跳过此版本  ",
+                        font=("微软雅黑", 9), bg=BG, fg=MUTED,
+                        padx=10, pady=6, cursor="hand2", relief=tk.FLAT)
+    skip_btn.pack(side=tk.LEFT, padx=(0, 8))
+    skip_btn.bind("<Enter>", lambda e: skip_btn.config(fg=TEXT))
+    skip_btn.bind("<Leave>", lambda e: skip_btn.config(fg=MUTED))
+    skip_btn.bind("<Button-1>", lambda e: _on_skip())
+
+    later_btn = tk.Label(btn_inner, text="  暂不更新  ",
+                         font=("微软雅黑", 10), bg=SURFACE, fg=MUTED,
+                         padx=14, pady=6, cursor="hand2", relief=tk.FLAT)
+    later_btn.pack(side=tk.LEFT, padx=(0, 12))
+    later_btn.bind("<Enter>", lambda e: later_btn.config(fg=DANGER))
+    later_btn.bind("<Leave>", lambda e: later_btn.config(fg=MUTED))
+    later_btn.bind("<Button-1>", lambda e: _on_continue())
+
+    update_btn = tk.Label(btn_inner, text="   立即更新   ",
+                          font=("微软雅黑", 11, "bold"), bg=PRIMARY, fg="#ffffff",
+                          padx=24, pady=8, cursor="hand2", relief=tk.FLAT)
+    update_btn.pack(side=tk.LEFT)
+    update_btn.bind("<Enter>", lambda e: update_btn.config(bg=PRIMARY_HOVER))
+    update_btn.bind("<Leave>", lambda e: update_btn.config(bg=PRIMARY))
+    update_btn.bind("<Button-1>", lambda e: _on_update())
+
+    tk.Label(body, text="建议更新到最新版本以获得最佳体验（也可以稍后更新）",
+             font=("微软雅黑", 8), bg=BG, fg=MUTED).pack(pady=(0, 4))
+
+    win.grab_set()
+    win.focus_force()
+    parent.wait_window(win)
+
+
+# =====================================================================
 
 
 class Theme:
@@ -89,6 +309,7 @@ class Theme:
     NAV_ACTIVE = "#cce0ff"
     NAV_CURRENT = "#ff9900"
     NAV_ANSWERED = "#0078d7"
+    NAV_MARKED = "#ff6600"
     FONT = ("微软雅黑", 11)
     FONT_BOLD = ("微软雅黑", 11, "bold")
     FONT_TITLE = ("微软雅黑", 12, "bold")
@@ -128,18 +349,50 @@ def bind_mousewheel(widget, canvas):
     _bind_recursive(widget)
 
 
-# ★★★ 新增：查找系统中真实的 Python 路径 ★★★
 def find_system_python():
-    """
-    在打包环境中找到系统安装的 Python 解释器路径。
-    返回找到的 python.exe 路径，找不到返回 None。
-    """
     if sys.platform != "win32":
         return None
 
+    NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
     candidates = []
 
-    # 方法1：从注册表查找
+    try:
+        py_path = shutil.which("py")
+        if py_path:
+            result = subprocess.run(
+                [py_path, "-3", "-c", "import sys; print(sys.executable)"],
+                capture_output=True, text=True, timeout=5,
+                creationflags=NO_WINDOW
+            )
+            if result.returncode == 0:
+                exe = result.stdout.strip()
+                if exe and os.path.isfile(exe) and exe not in candidates:
+                    candidates.append(exe)
+    except Exception:
+        pass
+
+    for name in ["python", "python3"]:
+        try:
+            p = shutil.which(name)
+            if p and os.path.isfile(p) and p not in candidates:
+                candidates.append(p)
+        except Exception:
+            pass
+
+    try:
+        result = subprocess.run(
+            ["where", "python"],
+            capture_output=True, text=True, timeout=5,
+            creationflags=NO_WINDOW
+        )
+        if result.returncode == 0:
+            for line in result.stdout.strip().splitlines():
+                line = line.strip()
+                if line and os.path.isfile(line) and line not in candidates:
+                    candidates.append(line)
+    except Exception:
+        pass
+
     try:
         import winreg
         for hive in [winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER]:
@@ -155,7 +408,7 @@ def find_system_python():
                                 with winreg.OpenKey(key, f"{version}\\InstallPath") as ik:
                                     path = winreg.QueryValue(ik, "")
                                     exe = os.path.join(path, "python.exe")
-                                    if os.path.isfile(exe):
+                                    if os.path.isfile(exe) and exe not in candidates:
                                         candidates.append(exe)
                             except Exception:
                                 continue
@@ -164,42 +417,42 @@ def find_system_python():
     except Exception:
         pass
 
-    # 方法2：用 where 命令查找 PATH 中的 python
-    try:
-        result = subprocess.run(
-            ["where", "python"],
-            capture_output=True, text=True, timeout=5,
-            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        )
-        if result.returncode == 0:
-            for line in result.stdout.strip().splitlines():
-                line = line.strip()
-                if line and os.path.isfile(line) and line not in candidates:
-                    candidates.append(line)
-    except Exception:
-        pass
-
-    # 方法3：常见安装路径
     local_app = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("ProgramFiles", "C:\\Program Files")
-    common_paths = [
-        os.path.join(local_app, r"Programs\Python\Python313\python.exe"),
-        os.path.join(local_app, r"Programs\Python\Python312\python.exe"),
-        os.path.join(local_app, r"Programs\Python\Python311\python.exe"),
-        os.path.join(local_app, r"Programs\Python\Python310\python.exe"),
-        os.path.join(local_app, r"Programs\Python\Python39\python.exe"),
-        r"C:\Python313\python.exe",
-        r"C:\Python312\python.exe",
-        r"C:\Python311\python.exe",
-        r"C:\Python310\python.exe",
-        r"C:\Python39\python.exe",
-        os.path.join(program_files, r"Python313\python.exe"),
-        os.path.join(program_files, r"Python312\python.exe"),
-        os.path.join(program_files, r"Python311\python.exe"),
-    ]
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)")
+    home = os.path.expanduser("~")
+
+    common_paths = []
+    for v in range(8, 20):
+        common_paths.extend([
+            os.path.join(local_app, f"Programs\\Python\\Python3{v}\\python.exe"),
+            f"C:\\Python3{v}\\python.exe",
+            os.path.join(program_files, f"Python3{v}\\python.exe"),
+            os.path.join(program_files_x86, f"Python3{v}\\python.exe"),
+        ])
+
+    common_paths.extend([
+        os.path.join(local_app, "anaconda3", "python.exe"),
+        os.path.join(local_app, "miniconda3", "python.exe"),
+        os.path.join(home, "anaconda3", "python.exe"),
+        os.path.join(home, "miniconda3", "python.exe"),
+        os.path.join(program_files, "anaconda3", "python.exe"),
+        os.path.join(program_files, "miniconda3", "python.exe"),
+        r"C:\Anaconda3\python.exe",
+        r"C:\Miniconda3\python.exe",
+    ])
+
     for p in common_paths:
         if os.path.isfile(p) and p not in candidates:
             candidates.append(p)
+
+    for dir_path in os.environ.get("PATH", "").split(os.pathsep):
+        dir_path = dir_path.strip()
+        if not dir_path:
+            continue
+        exe = os.path.join(dir_path, "python.exe")
+        if os.path.isfile(exe) and exe not in candidates:
+            candidates.append(exe)
 
     if candidates:
         return candidates[0]
@@ -239,6 +492,7 @@ class HNUSTExamSystem:
         self.current_index = 0
         self.user_answers = {}
         self.score = 0
+        self.marked_questions = set()
         self.exam_time = 60 * 60
         self.remaining_time = self.exam_time
         self.timer_running = False
@@ -252,12 +506,33 @@ class HNUSTExamSystem:
         self.question_type_order = ["单选", "填空", "判断", "程序填空", "程序改错"]
         self.is_pure_program_exam = False
         self.pure_program_type_order = ["程序设计"]
-        # ★ 改动1：新增动态题型顺序属性
         self.active_type_order = []
 
         self._backup_dir = None
 
         self.create_welcome_window()
+
+        self._check_updates_async()
+
+    def _check_updates_async(self):
+        def _worker():
+            try:
+                info = _fetch_update_info()
+                if info:
+                    try:
+                        self.root.after(1000, lambda: self._prompt_update(info))
+                    except tk.TclError:
+                        pass
+            except Exception as e:
+                print(f"[更新检查] 后台检查失败: {e}")
+
+        Thread(target=_worker, daemon=True).start()
+
+    def _prompt_update(self, info):
+        try:
+            _show_update_dialog(self.root, info)
+        except tk.TclError:
+            pass
 
     def _on_close(self):
         self.timer_running = False
@@ -293,7 +568,7 @@ class HNUSTExamSystem:
         tk.Label(title_bar, text="🌐 HNUST仿真平台",
                  bg=Theme.PRIMARY, fg="white",
                  font=("微软雅黑", 24, "bold")).pack(side=tk.LEFT, padx=30, pady=15)
-        tk.Label(title_bar, text="v1.0.3",
+        tk.Label(title_bar, text="v1.0.4",
                  bg=Theme.PRIMARY, fg="#cce0ff",
                  font=("微软雅黑", 12)).pack(side=tk.LEFT, padx=10, pady=15)
 
@@ -343,8 +618,8 @@ class HNUSTExamSystem:
                 "特别感谢：豆包、DeepSeek、小米MIMO 提供的AI编程支持",
                 "如果觉得好用，欢迎给个Star支持一下作者"
             ]),
-            ("📝 内测反馈", [
-                "当前版本为**内测版**，可能存在一些bug和不完善的地方",
+            ("📝 问题反馈", [
+                "该应用为学生开发，可能存在一些bug和不完善的地方",
                 "如果遇到任何问题或有改进建议",
                 "欢迎通过以下方式联系作者反馈：",
                 "  • 在频道私信作者",
@@ -365,17 +640,43 @@ class HNUSTExamSystem:
                          font=("微软雅黑", 11), bg="white", fg=Theme.TEXT,
                          wraplength=800, justify="left", anchor="w").pack(fill=tk.X, pady=2)
 
-        # ★★★ 底部按钮区 — 带10秒倒计时 ★★★
         bottom_frame = tk.Frame(self.root, bg=Theme.BG)
         bottom_frame.pack(fill=tk.X, padx=100, pady=(0, 40))
 
         self.agree_var = tk.BooleanVar(value=False)
-        agree_check = tk.Checkbutton(bottom_frame, text="我已阅读并同意以上所有条款",
-                                     variable=self.agree_var, font=("微软雅黑", 11),
-                                     bg=Theme.BG, fg=Theme.TEXT, cursor="hand2")
-        agree_check.pack(side=tk.LEFT, padx=100)
 
-        # 进入系统按钮（初始禁用）
+        agree_frame = tk.Frame(bottom_frame, bg=Theme.BG)
+        agree_frame.pack(side=tk.LEFT, padx=100, pady=10)
+
+        BOX_SIZE = 26
+        self.agree_canvas = tk.Canvas(agree_frame, width=BOX_SIZE, height=BOX_SIZE,
+                                      bg=Theme.BG, highlightthickness=0)
+        self.agree_canvas.pack(side=tk.LEFT, padx=(0, 10))
+
+        def draw_box(checked=False):
+            self.agree_canvas.delete("all")
+            self.agree_canvas.create_rectangle(2, 2, BOX_SIZE - 2, BOX_SIZE - 2,
+                                               outline="#999999", width=2, fill="white")
+            if checked:
+                self.agree_canvas.create_line(
+                    7, 13, 11, 18, 19, 6,
+                    width=3, fill=Theme.PRIMARY, capstyle=tk.ROUND, joinstyle=tk.ROUND)
+
+        draw_box(False)
+
+        def toggle_agree(event=None):
+            new_val = not self.agree_var.get()
+            self.agree_var.set(new_val)
+            draw_box(new_val)
+
+        self.agree_canvas.bind("<Button-1>", toggle_agree)
+
+        agree_label = tk.Label(agree_frame, text="我已阅读并同意以上所有条款",
+                               font=("微软雅黑", 13, "bold"),
+                               bg=Theme.BG, fg=Theme.TEXT, cursor="hand2")
+        agree_label.pack(side=tk.LEFT)
+        agree_label.bind("<Button-1>", toggle_agree)
+
         def enter_system():
             if not self.agree_var.get():
                 messagebox.showwarning("提示", "请先阅读并同意以上条款")
@@ -385,22 +686,18 @@ class HNUSTExamSystem:
         self.enter_btn = tk.Button(
             bottom_frame, text="进入系统（请等待 10 秒）",
             font=("微软雅黑", 14, "bold"), command=enter_system,
-            bg="#cccccc", fg="white",  # 灰色背景表示不可用
-            padx=40, pady=10, bd=0, cursor="arrow",  # 箭头光标表示禁用
+            bg="#cccccc", fg="white",
+            padx=40, pady=10, bd=0, cursor="arrow",
             state=tk.DISABLED)
         self.enter_btn.pack(side=tk.RIGHT, padx=20)
 
-        # 启动倒计时
         self._welcome_countdown(10)
 
     def _welcome_countdown(self, remaining):
-        """欢迎页倒计时，倒计时结束后启用进入按钮"""
         if remaining > 0:
             self.enter_btn.config(text=f"进入系统（请等待 {remaining} 秒）")
-            # 每秒调用一次自身
             self.root.after(1000, lambda: self._welcome_countdown(remaining - 1))
         else:
-            # 倒计时结束，恢复按钮
             self.enter_btn.config(
                 text="进入系统",
                 bg=Theme.PRIMARY,
@@ -527,7 +824,6 @@ class HNUSTExamSystem:
                     q_type = q["题型"]
                     self.question_groups.setdefault(q_type, []).append(q)
 
-            # ★ 改动2：动态生成题型顺序（按题目在表格中首次出现的先后顺序）
             self.active_type_order = []
             for q in self.questions:
                 t = q["题型"]
@@ -535,6 +831,7 @@ class HNUSTExamSystem:
                     self.active_type_order.append(t)
 
             self.user_answers = {}
+            self.marked_questions = set()
             self.current_index = 0
             self.score = 0
             self.remaining_time = self.exam_time
@@ -578,6 +875,9 @@ class HNUSTExamSystem:
             if os.path.isfile(src):
                 shutil.copy2(src, os.path.join(self._backup_dir, pf))
 
+    # =====================================================================
+    #  create_exam_window — 左侧加惯性滚动 + 底部栏固定高度
+    # =====================================================================
     def create_exam_window(self):
         self._clear_window()
 
@@ -597,8 +897,39 @@ class HNUSTExamSystem:
         main_frame = tk.Frame(self.root, bg=Theme.BG)
         main_frame.pack(fill=tk.BOTH, expand=True)
 
+        # ========== 左侧：用 Canvas + Scrollbar 包裹，实现惯性滚动 ==========
         self.left_frame = tk.Frame(main_frame, bg="white", bd=1, relief=tk.SOLID)
         self.left_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        left_scroll_area = tk.Frame(self.left_frame, bg="white")
+        left_scroll_area.pack(fill=tk.BOTH, expand=True)
+
+        self._lp_canvas = tk.Canvas(left_scroll_area, bg="white", highlightthickness=0)
+        lp_scrollbar = ttk.Scrollbar(left_scroll_area, orient="vertical",
+                                     command=self._lp_canvas.yview)
+        self._lp_canvas.configure(yscrollcommand=lp_scrollbar.set)
+        self._lp_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lp_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self._lp_inner = tk.Frame(self._lp_canvas, bg="white")
+        lp_canvas_win = self._lp_canvas.create_window(
+            (0, 0), window=self._lp_inner, anchor="nw")
+
+        self._lp_cached_content_h = 1
+        self._lp_cached_visible_h = 1
+
+        def _on_lp_canvas_resize(e):
+            self._lp_canvas.itemconfig(lp_canvas_win, width=e.width)
+            self._lp_cached_visible_h = e.height
+
+        self._lp_canvas.bind("<Configure>", _on_lp_canvas_resize)
+
+        def _on_lp_inner_resize(e):
+            self._lp_canvas.configure(scrollregion=self._lp_canvas.bbox("all"))
+            self._lp_cached_content_h = e.height
+
+        self._lp_inner.bind("<Configure>", _on_lp_inner_resize)
+        # ==================================================================
 
         self.right_frame = tk.Frame(main_frame, bg="white", bd=1, relief=tk.SOLID, width=250)
         self.right_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0, 10), pady=10)
@@ -606,23 +937,29 @@ class HNUSTExamSystem:
 
         self._build_nav_panels()
 
-        self.q_title_bar = tk.Frame(self.left_frame, bg=Theme.PRIMARY)
+        # ★ 内容框架放入 self._lp_inner（可滚动区域）
+        self.q_title_bar = tk.Frame(self._lp_inner, bg=Theme.PRIMARY)
         self.q_title_bar.pack(fill=tk.X, padx=20, pady=(20, 10))
 
-        self.q_instruction = tk.Frame(self.left_frame, bg="white")
+        self.q_instruction = tk.Frame(self._lp_inner, bg="white")
         self.q_instruction.pack(fill=tk.X)
 
-        self.q_content = tk.Frame(self.left_frame, bg="white")
+        self.q_content = tk.Frame(self._lp_inner, bg="white")
         self.q_content.pack(fill=tk.X, padx=20, pady=(10, 5))
 
-        self.q_answer_area = tk.Frame(self.left_frame, bg="white")
+        self.q_answer_area = tk.Frame(self._lp_inner, bg="white")
         self.q_answer_area.pack(fill=tk.X, padx=20, pady=10)
 
-        self.q_feedback = tk.Frame(self.left_frame, bg="white")
+        self.q_feedback = tk.Frame(self._lp_inner, bg="white")
         self.q_feedback.pack(fill=tk.X, padx=20, pady=5)
 
+        # ★ 初始化左侧惯性滚动引擎
+        self._setup_left_scroll()
+
+        # ★ 底部按钮栏 — 固定高度，不随窗口缩放
         bottom_bar = tk.Frame(self.root, bg=Theme.BG, height=60)
         bottom_bar.pack(fill=tk.X, padx=10, pady=(0, 10))
+        bottom_bar.pack_propagate(False)
 
         btn_style = {"font": ("微软雅黑", 10), "bd": 1, "relief": tk.SOLID,
                      "cursor": "hand2", "padx": 10, "pady": 5}
@@ -640,9 +977,11 @@ class HNUSTExamSystem:
                   command=self.open_exam_folder).pack(side=tk.LEFT, padx=5)
 
         tk.Button(bottom_bar, text="重做", **btn_style, bg=Theme.BG,
-                  command=self.reset_program_file).pack(side=tk.LEFT, padx=5)
-        tk.Button(bottom_bar, text="标记试题", **btn_style, bg=Theme.BG,
-                  command=self.not_implemented).pack(side=tk.LEFT, padx=5)
+                  command=self.redo_question).pack(side=tk.LEFT, padx=5)
+
+        self.mark_btn = tk.Button(bottom_bar, text="标记试题", **btn_style, bg=Theme.BG,
+                                  command=self.toggle_mark)
+        self.mark_btn.pack(side=tk.LEFT, padx=5)
         tk.Button(bottom_bar, text="答案", **btn_style, bg=Theme.BG,
                   command=self.show_answer).pack(side=tk.LEFT, padx=5)
         tk.Button(bottom_bar, text="试题解析", **btn_style, bg=Theme.BG,
@@ -704,13 +1043,16 @@ class HNUSTExamSystem:
             elif event.char.lower() in ("f", "n", "0"):
                 self._choose(current_q["题号"], "B")
 
-    # ★★★ 核心修改1：重写 open_program_file ★★★
     def open_program_file(self):
         current_q = self.questions[self.current_index]
         program_file = current_q.get("程序文件", "").strip()
 
         if not program_file:
             messagebox.showinfo("提示", "该题目没有对应的程序文件")
+            return
+
+        if ".." in program_file or program_file.startswith(("/", "\\")):
+            messagebox.showerror("错误", f"非法的文件路径：{program_file}")
             return
 
         exam_dir = os.path.dirname(self.current_exam_file)
@@ -730,7 +1072,6 @@ class HNUSTExamSystem:
             if program_file.lower().endswith(".py"):
                 opened = self._open_with_idle(program_path)
                 if not opened:
-                    # ★ 关键修复：用 CREATE_NO_WINDOW 避免弹出控制台
                     if sys.platform == "win32":
                         os.startfile(program_path)
                     else:
@@ -758,16 +1099,10 @@ class HNUSTExamSystem:
         except Exception as e:
             messagebox.showerror("错误", f"打开文件失败：{str(e)}")
 
-    # ★★★ 核心修改2：完全重写 _open_with_idle ★★★
     def _open_with_idle(self, file_path):
-        """
-        在打包环境中找到系统Python并用IDLE打开文件。
-        不使用 sys.executable（打包后它是你的exe，不是python.exe）。
-        """
         abs_path = os.path.abspath(file_path)
         NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
-        # ---- 非打包环境：直接用 sys.executable ----
         if not hasattr(sys, '_MEIPASS'):
             try:
                 subprocess.Popen(
@@ -777,57 +1112,129 @@ class HNUSTExamSystem:
             except Exception:
                 pass
 
-        # ---- 打包环境：查找系统中真实的 Python ----
-        python_exe = find_system_python()
-
-        if python_exe is None:
-            return False
-
-        python_dir = os.path.dirname(python_exe)
-
-        # 尝试方式1：python.exe -m idlelib file.py
         try:
-            subprocess.Popen(
-                [python_exe, "-m", "idlelib", abs_path],
-                creationflags=NO_WINDOW)
-            return True
+            if shutil.which("py"):
+                check = subprocess.run(
+                    ["py", "-3", "--version"],
+                    capture_output=True, text=True, timeout=5,
+                    creationflags=NO_WINDOW
+                )
+                if check.returncode == 0 and "Python" in check.stdout:
+                    subprocess.Popen(
+                        ["py", "-3", "-m", "idlelib", abs_path],
+                        creationflags=NO_WINDOW)
+                    return True
         except Exception:
             pass
 
-        # 尝试方式2：直接运行 idle.pyw
-        idle_pyw = os.path.join(python_dir, "Lib", "idlelib", "idle.pyw")
-        if os.path.isfile(idle_pyw):
+        for cmd_name in ["python", "python3"]:
+            python_path = shutil.which(cmd_name)
+            if python_path:
+                try:
+                    check = subprocess.run(
+                        [python_path, "--version"],
+                        capture_output=True, text=True, timeout=5,
+                        creationflags=NO_WINDOW
+                    )
+                    if check.returncode == 0 and "Python" in check.stdout:
+                        subprocess.Popen(
+                            [python_path, "-m", "idlelib", abs_path],
+                            creationflags=NO_WINDOW)
+                        return True
+                except Exception:
+                    continue
+
+        python_exe = find_system_python()
+
+        if python_exe is not None:
+            python_dir = os.path.dirname(python_exe)
+
             try:
                 subprocess.Popen(
-                    [python_exe, idle_pyw, abs_path],
+                    [python_exe, "-m", "idlelib", abs_path],
                     creationflags=NO_WINDOW)
                 return True
             except Exception:
                 pass
 
-        # 尝试方式3：Scripts/idle.exe
-        idle_exe = os.path.join(python_dir, "Scripts", "idle.exe")
-        if os.path.isfile(idle_exe):
-            try:
-                subprocess.Popen(
-                    [idle_exe, abs_path],
-                    creationflags=NO_WINDOW)
-                return True
-            except Exception:
-                pass
+            idle_pyw = os.path.join(python_dir, "Lib", "idlelib", "idle.pyw")
+            if os.path.isfile(idle_pyw):
+                try:
+                    subprocess.Popen(
+                        [python_exe, idle_pyw, abs_path],
+                        creationflags=NO_WINDOW)
+                    return True
+                except Exception:
+                    pass
 
-        # 尝试方式4：pythonw.exe -m idlelib（无控制台窗口）
-        pythonw_exe = os.path.join(python_dir, "pythonw.exe")
-        if os.path.isfile(pythonw_exe):
+            idle_exe = os.path.join(python_dir, "Scripts", "idle.exe")
+            if os.path.isfile(idle_exe):
+                try:
+                    subprocess.Popen(
+                        [idle_exe, abs_path],
+                        creationflags=NO_WINDOW)
+                    return True
+                except Exception:
+                    pass
+
+            pythonw_exe = os.path.join(python_dir, "pythonw.exe")
+            if os.path.isfile(pythonw_exe):
+                try:
+                    subprocess.Popen(
+                        [pythonw_exe, "-m", "idlelib", abs_path],
+                        creationflags=NO_WINDOW)
+                    return True
+                except Exception:
+                    pass
+
+        python_path = self._ask_user_for_python()
+        if python_path:
             try:
                 subprocess.Popen(
-                    [pythonw_exe, "-m", "idlelib", abs_path],
+                    [python_path, "-m", "idlelib", abs_path],
                     creationflags=NO_WINDOW)
                 return True
             except Exception:
                 pass
 
         return False
+
+    def _ask_user_for_python(self):
+        result = messagebox.askyesno(
+            "未找到 Python",
+            "系统未能自动找到 Python 环境。\n\n"
+            "你的电脑上是否已安装 Python？\n\n"
+            '  • 已安装 → 点击"是"，手动选择 python.exe\n'
+            '  • 未安装 → 点击"否"，前往官网下载')
+
+        if not result:
+            messagebox.showinfo(
+                "安装 Python",
+                "请前往 python.org 下载安装 Python。\n\n"
+                '安装时务必勾选 "Add Python to PATH" 选项！\n\n'
+                "安装完成后重新打开本程序。")
+            webbrowser.open("https://www.python.org/downloads/")
+            return None
+
+        from tkinter import filedialog
+
+        initial_dir = "C:\\"
+        for candidate in [
+            os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs\\Python"),
+            os.environ.get("ProgramFiles", "C:\\Program Files"),
+        ]:
+            if os.path.isdir(candidate):
+                initial_dir = candidate
+                break
+
+        python_path = filedialog.askopenfilename(
+            title="找到 python.exe 并选择它",
+            filetypes=[("python.exe", "python.exe"), ("所有文件", "*.*")],
+            initialdir=initial_dir)
+
+        if python_path and os.path.isfile(python_path):
+            return python_path
+        return None
 
     def open_exam_folder(self):
         exam_dir = os.path.dirname(self.current_exam_file)
@@ -875,52 +1282,110 @@ class HNUSTExamSystem:
 
         messagebox.showinfo("提示", "未找到备份文件，请手动从原始来源恢复")
 
-    def _build_nav_panels(self):
-        tk.Label(self.right_frame, text="题目导航",
-                 font=Theme.FONT_TITLE, bg="white").pack(pady=(10, 5))
+    def redo_question(self):
+        current_q = self.questions[self.current_index]
+        global_num = current_q["题号"]
 
-        canvas = tk.Canvas(self.right_frame, bg="white", highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self.right_frame, orient="vertical",
+        self.user_answers.pop(global_num, None)
+
+        self._clear_children(self.q_feedback)
+        self.answer_label = tk.Label(
+            self.q_feedback, text="",
+            font=("微软雅黑", 11, "bold"), bg="white", fg="#0000ff",
+            justify="left", anchor="w")
+        self.answer_label.pack(fill=tk.X)
+
+        q_type = current_q["题型"]
+
+        if q_type in ("单选", "判断"):
+            self.answer_var.set("")
+            for opt_letter, btn in self._choice_buttons.items():
+                try:
+                    btn.config(bg=Theme.BG, fg="black")
+                except tk.TclError:
+                    pass
+        else:
+            self.answer_var.set("")
+            if self.answer_text is not None:
+                try:
+                    self.answer_text.delete("1.0", tk.END)
+                except tk.TclError:
+                    pass
+            if self.answer_entry is not None:
+                try:
+                    self.answer_entry.delete(0, tk.END)
+                except tk.TclError:
+                    pass
+
+        self._update_nav_status()
+
+    # =====================================================================
+    #  题目导航栏 — 速度模型惯性滚动 + 弹性回弹 + 缓存边界
+    # =====================================================================
+    def _build_nav_panels(self):
+        nav_header = tk.Frame(self.right_frame, bg="white")
+        nav_header.pack(fill=tk.X, side=tk.TOP)
+        tk.Label(nav_header, text="题目导航",
+                 font=Theme.FONT_TITLE, bg="white", anchor="center"
+                 ).pack(fill=tk.X, pady=(12, 6), padx=5)
+        tk.Frame(nav_header, bg=Theme.BORDER, height=1).pack(fill=tk.X, padx=8)
+
+        nav_footer = tk.Frame(self.right_frame, bg="white")
+        nav_footer.pack(fill=tk.X, side=tk.BOTTOM)
+        tk.Frame(nav_footer, bg=Theme.BORDER, height=1).pack(fill=tk.X, padx=8)
+        self.status_label = tk.Label(
+            nav_footer,
+            text=f"未答 {len(self.questions)}，已答 0，标记 0",
+            font=("微软雅黑", 9), bg="white", fg="#666")
+        self.status_label.pack(pady=(6, 10))
+
+        scroll_area = tk.Frame(self.right_frame, bg="white")
+        scroll_area.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
+
+        canvas = tk.Canvas(scroll_area, bg="white", highlightthickness=0)
+        scrollbar = ttk.Scrollbar(scroll_area, orient="vertical",
                                   command=canvas.yview)
         canvas.configure(yscrollcommand=scrollbar.set)
-
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         nav_inner = tk.Frame(canvas, bg="white")
-        canvas_window = canvas.create_window((0, 0), window=nav_inner, anchor="nw")
+        canvas_win = canvas.create_window((0, 0), window=nav_inner, anchor="nw")
 
-        def _on_canvas_configure(event):
-            canvas.itemconfig(canvas_window, width=event.width)
+        self._ns_cached_content_h = 1
+        self._ns_cached_visible_h = 1
 
-        canvas.bind("<Configure>", _on_canvas_configure)
+        def _on_canvas_resize(e):
+            canvas.itemconfig(canvas_win, width=e.width)
+            self._ns_cached_visible_h = e.height
 
-        def _on_inner_configure(event):
+        canvas.bind("<Configure>", _on_canvas_resize)
+
+        def _on_inner_resize(e):
             canvas.configure(scrollregion=canvas.bbox("all"))
+            self._ns_cached_content_h = e.height
 
-        nav_inner.bind("<Configure>", _on_inner_configure)
-
-        bind_mousewheel(nav_inner, canvas)
-        bind_mousewheel(canvas, canvas)
+        nav_inner.bind("<Configure>", _on_inner_resize)
 
         self.nav_panels = {}
         self.nav_q_buttons = {}
-
-        # ★ 改动3：使用动态题型顺序
         used_type_order = self.active_type_order
 
+        first_type = True
         for idx, q_type in enumerate(used_type_order):
             count = len(self.question_groups.get(q_type, []))
             if count == 0:
                 continue
 
-            if idx > 0:
+            if not first_type:
                 tk.Frame(nav_inner, bg=Theme.BORDER, height=1).pack(fill=tk.X, pady=4)
+            first_type = False
 
             header = tk.Frame(nav_inner, bg="#e8f0fe")
             header.pack(fill=tk.X, padx=4, pady=1)
 
-            arrow_var = tk.StringVar(value="▼" if idx == 0 else "▶")
+            is_first_panel = (len(self.nav_panels) == 0)
+            arrow_var = tk.StringVar(value="▼" if is_first_panel else "▶")
             arrow_lbl = tk.Label(header, textvariable=arrow_var,
                                  font=("微软雅黑", 9), bg="#e8f0fe",
                                  width=2, anchor="center")
@@ -942,7 +1407,6 @@ class HNUSTExamSystem:
                 for type_idx, q in enumerate(self.question_groups[q_type]):
                     global_idx = q["_global_idx"]
                     global_num = q["题号"]
-
                     preview = q["题目"][:30] + ("..." if len(q["题目"]) > 30 else "")
 
                     btn = tk.Button(
@@ -952,35 +1416,512 @@ class HNUSTExamSystem:
                         bd=0, anchor="w", padx=20, cursor="hand2",
                         activebackground=Theme.NAV_ACTIVE,
                         command=lambda gi=global_idx: self._nav_jump(gi))
-
                     btn.bind("<Enter>", lambda e, p=preview: self._show_tooltip(e, p))
                     btn.bind("<Leave>", lambda e: self._hide_tooltip())
-
                     btn.pack(fill=tk.X, pady=0)
                     self.nav_panels[q_type]["items"].append(btn)
                     self.nav_q_buttons[global_idx] = btn
 
-            def _toggle(qt=q_type, al=arrow_var, bd=body, hd=header, cv=canvas):
+            def _toggle(al=arrow_var, bd=body, hd=header):
                 if bd.winfo_ismapped():
                     bd.pack_forget()
                     al.set("▶")
                 else:
                     bd.pack(fill=tk.X, after=hd)
                     al.set("▼")
-                    bind_mousewheel(bd, cv)
-                cv.after(50, lambda: cv.configure(scrollregion=cv.bbox("all")))
+                canvas.after(30, lambda: self._ns_clamp(canvas))
 
             for widget in (header, arrow_lbl, title_lbl):
                 widget.bind("<Button-1>", lambda e, fn=_toggle: fn())
 
-            if idx == 0:
+            if is_first_panel:
                 body.pack(fill=tk.X, after=header)
 
-        self.status_label = tk.Label(
-            self.right_frame,
-            text=f"未答 {len(self.questions)}，已答 0，标记 0",
-            font=("微软雅黑", 9), bg="white", fg="#666")
-        self.status_label.pack(side=tk.BOTTOM, pady=10)
+        self._ns_canvas = canvas
+        self._ns_inner = nav_inner
+        self._ns_state = {
+            'vel': 0.0,
+            'aid': None,
+            'bounce': False,
+            'lt': 0.0,
+        }
+
+        _FRICTION = 0.80
+        _STOP_THR = 0.00002
+        _MAX_VEL = 0.18
+        _PX_PER_NOTCH = 38.0
+
+        def _on_wheel(event):
+            if self._ns_state['bounce']:
+                return "break"
+
+            if event.num == 4:
+                notch = -1
+            elif event.num == 5:
+                notch = 1
+            elif sys.platform == "darwin":
+                notch = -event.delta
+            else:
+                notch = -event.delta / 120.0
+
+            content_h = self._ns_cached_content_h
+            if content_h <= 0:
+                return "break"
+
+            frac_per_px = 1.0 / content_h
+            vel_delta = notch * _PX_PER_NOTCH * frac_per_px
+
+            self._ns_state['vel'] += vel_delta
+            if self._ns_state['vel'] > _MAX_VEL:
+                self._ns_state['vel'] = _MAX_VEL
+            elif self._ns_state['vel'] < -_MAX_VEL:
+                self._ns_state['vel'] = -_MAX_VEL
+
+            if self._ns_state['aid'] is None:
+                self._ns_state['lt'] = time.perf_counter()
+                self._ns_state['aid'] = canvas.after(14, _step)
+
+            return "break"
+
+        def _step():
+            try:
+                now = time.perf_counter()
+                dt = now - self._ns_state['lt']
+                self._ns_state['lt'] = now
+
+                n_frames = max(0.3, dt * 60.0)
+                friction = _FRICTION ** n_frames
+                vel = self._ns_state['vel'] * friction
+
+                if abs(vel) < _STOP_THR:
+                    self._ns_state['vel'] = 0.0
+                    self._ns_state['aid'] = None
+                    return
+
+                self._ns_state['vel'] = vel
+
+                content_h = self._ns_cached_content_h
+                visible_h = self._ns_cached_visible_h
+                if content_h <= visible_h:
+                    self._ns_state['vel'] = 0.0
+                    self._ns_state['aid'] = None
+                    canvas.yview_moveto(0)
+                    return
+
+                max_frac = 1.0 - visible_h / content_h
+                current = canvas.yview()[0]
+                new_pos = current + vel
+
+                if new_pos < -0.008:
+                    self._ns_state['vel'] = 0.0
+                    self._ns_state['aid'] = None
+                    self._ns_bounce_top()
+                    return
+                if new_pos > max_frac + 0.008:
+                    self._ns_state['vel'] = 0.0
+                    self._ns_state['aid'] = None
+                    self._ns_bounce_bottom()
+                    return
+
+                if new_pos < 0:
+                    new_pos = 0
+                elif new_pos > max_frac:
+                    new_pos = max_frac
+
+                canvas.yview_moveto(new_pos)
+                self._ns_state['aid'] = canvas.after(14, _step)
+
+            except tk.TclError:
+                self._ns_state['aid'] = None
+
+        canvas.bind("<MouseWheel>", _on_wheel)
+        canvas.bind("<Button-4>", _on_wheel)
+        canvas.bind("<Button-5>", _on_wheel)
+
+        def _bind_mw(w):
+            w.bind("<MouseWheel>", _on_wheel)
+            w.bind("<Button-4>", _on_wheel)
+            w.bind("<Button-5>", _on_wheel)
+            for child in w.winfo_children():
+                _bind_mw(child)
+
+        _bind_mw(nav_inner)
+
+    def _ns_clamp(self, canvas):
+        try:
+            canvas.update_idletasks()
+            sr = canvas.bbox("all")
+            if sr:
+                canvas.configure(scrollregion=sr)
+                self._ns_cached_content_h = sr[3] - sr[1]
+            content_h = self._ns_cached_content_h
+            visible_h = canvas.winfo_height()
+            self._ns_cached_visible_h = visible_h
+
+            if content_h <= visible_h:
+                canvas.yview_moveto(0)
+                self._ns_state['vel'] = 0
+            else:
+                max_frac = 1.0 - visible_h / content_h
+                current = canvas.yview()[0]
+                if current > max_frac:
+                    canvas.yview_moveto(max_frac)
+                elif current < 0:
+                    canvas.yview_moveto(0)
+        except tk.TclError:
+            pass
+
+    def _ns_bounce_top(self):
+        if self._ns_state['bounce']:
+            return
+        self._ns_state['bounce'] = True
+
+        canvas = self._ns_canvas
+        inner = self._ns_inner
+        BOUNCE_PX = 40
+
+        children = inner.winfo_children()
+        spacer = tk.Frame(inner, bg="white", height=0)
+        if children:
+            spacer.pack(fill=tk.X, before=children[0])
+        else:
+            spacer.pack(fill=tk.X)
+
+        def _grow(h):
+            try:
+                if h >= BOUNCE_PX:
+                    canvas.after(15, lambda: _shrink(BOUNCE_PX))
+                    return
+                spacer.configure(height=h)
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+                canvas.after(7, lambda: _grow(h + 7))
+            except tk.TclError:
+                pass
+
+        def _shrink(h):
+            try:
+                if h <= 1:
+                    spacer.destroy()
+                    canvas.after(15, _cleanup)
+                    return
+                spacer.configure(height=max(0, h))
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+                canvas.after(8, lambda: _shrink(int(h * 0.45)))
+            except tk.TclError:
+                pass
+
+        def _cleanup():
+            try:
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+            except tk.TclError:
+                pass
+            self._ns_state['bounce'] = False
+
+        _grow(4)
+
+    def _ns_bounce_bottom(self):
+        if self._ns_state['bounce']:
+            return
+        self._ns_state['bounce'] = True
+
+        canvas = self._ns_canvas
+        inner = self._ns_inner
+        BOUNCE_PX = 40
+
+        spacer = tk.Frame(inner, bg="white", height=0)
+        spacer.pack(fill=tk.X)
+
+        def _grow(h):
+            try:
+                if h >= BOUNCE_PX:
+                    canvas.after(15, lambda: _shrink(BOUNCE_PX))
+                    return
+                spacer.configure(height=h)
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(1)
+                canvas.after(7, lambda: _grow(h + 7))
+            except tk.TclError:
+                pass
+
+        def _shrink(h):
+            try:
+                if h <= 1:
+                    spacer.destroy()
+                    canvas.after(15, _cleanup)
+                    return
+                spacer.configure(height=max(0, h))
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(1)
+                canvas.after(8, lambda: _shrink(int(h * 0.45)))
+            except tk.TclError:
+                pass
+
+        def _cleanup():
+            try:
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._ns_cached_content_h = sr[3] - sr[1]
+            except tk.TclError:
+                pass
+            self._ns_state['bounce'] = False
+
+        _grow(4)
+
+    # =====================================================================
+    #  左侧题目区域 — 惯性滚动 + 弹性回弹（与导航栏同款物理模型）
+    # =====================================================================
+    def _setup_left_scroll(self):
+        canvas = self._lp_canvas
+        inner = self._lp_inner
+
+        self._lp_state = {
+            'vel': 0.0,
+            'aid': None,
+            'bounce': False,
+            'lt': 0.0,
+        }
+
+        _FRICTION = 0.80
+        _STOP_THR = 0.00002
+        _MAX_VEL = 0.18
+        _PX_PER_NOTCH = 38.0
+
+        def _step():
+            try:
+                now = time.perf_counter()
+                dt = now - self._lp_state['lt']
+                self._lp_state['lt'] = now
+
+                n_frames = max(0.3, dt * 60.0)
+                friction = _FRICTION ** n_frames
+                vel = self._lp_state['vel'] * friction
+
+                if abs(vel) < _STOP_THR:
+                    self._lp_state['vel'] = 0.0
+                    self._lp_state['aid'] = None
+                    return
+
+                self._lp_state['vel'] = vel
+
+                content_h = self._lp_cached_content_h
+                visible_h = self._lp_cached_visible_h
+                if content_h <= visible_h:
+                    self._lp_state['vel'] = 0.0
+                    self._lp_state['aid'] = None
+                    canvas.yview_moveto(0)
+                    return
+
+                max_frac = 1.0 - visible_h / content_h
+                current = canvas.yview()[0]
+                new_pos = current + vel
+
+                if new_pos < -0.008:
+                    self._lp_state['vel'] = 0.0
+                    self._lp_state['aid'] = None
+                    self._lp_bounce_top()
+                    return
+                if new_pos > max_frac + 0.008:
+                    self._lp_state['vel'] = 0.0
+                    self._lp_state['aid'] = None
+                    self._lp_bounce_bottom()
+                    return
+
+                if new_pos < 0:
+                    new_pos = 0
+                elif new_pos > max_frac:
+                    new_pos = max_frac
+
+                canvas.yview_moveto(new_pos)
+                self._lp_state['aid'] = canvas.after(14, _step)
+
+            except tk.TclError:
+                self._lp_state['aid'] = None
+
+        self._lp_step = _step
+
+        def _on_wheel(event):
+            if self._lp_state['bounce']:
+                return "break"
+
+            if event.num == 4:
+                notch = -1
+            elif event.num == 5:
+                notch = 1
+            elif sys.platform == "darwin":
+                notch = -event.delta
+            else:
+                notch = -event.delta / 120.0
+
+            content_h = self._lp_cached_content_h
+            if content_h <= 0:
+                return "break"
+
+            frac_per_px = 1.0 / content_h
+            vel_delta = notch * _PX_PER_NOTCH * frac_per_px
+
+            self._lp_state['vel'] += vel_delta
+            if self._lp_state['vel'] > _MAX_VEL:
+                self._lp_state['vel'] = _MAX_VEL
+            elif self._lp_state['vel'] < -_MAX_VEL:
+                self._lp_state['vel'] = -_MAX_VEL
+
+            if self._lp_state['aid'] is None:
+                self._lp_state['lt'] = time.perf_counter()
+                self._lp_state['aid'] = canvas.after(14, _step)
+
+            return "break"
+
+        self._lp_on_wheel = _on_wheel
+
+        canvas.bind("<MouseWheel>", _on_wheel)
+        canvas.bind("<Button-4>", _on_wheel)
+        canvas.bind("<Button-5>", _on_wheel)
+
+        self._lp_bind_mw(inner)
+
+    def _lp_bind_mw(self, widget):
+        w_handler = self._lp_on_wheel
+        widget.bind("<MouseWheel>", w_handler)
+        widget.bind("<Button-4>", w_handler)
+        widget.bind("<Button-5>", w_handler)
+        for child in widget.winfo_children():
+            self._lp_bind_mw(child)
+
+    def _lp_bounce_top(self):
+        if self._lp_state['bounce']:
+            return
+        self._lp_state['bounce'] = True
+
+        canvas = self._lp_canvas
+        inner = self._lp_inner
+        BOUNCE_PX = 40
+
+        children = inner.winfo_children()
+        spacer = tk.Frame(inner, bg="white", height=0)
+        if children:
+            spacer.pack(fill=tk.X, before=children[0])
+        else:
+            spacer.pack(fill=tk.X)
+
+        def _grow(h):
+            try:
+                if h >= BOUNCE_PX:
+                    canvas.after(15, lambda: _shrink(BOUNCE_PX))
+                    return
+                spacer.configure(height=h)
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+                canvas.after(7, lambda: _grow(h + 7))
+            except tk.TclError:
+                pass
+
+        def _shrink(h):
+            try:
+                if h <= 1:
+                    spacer.destroy()
+                    canvas.after(15, _cleanup)
+                    return
+                spacer.configure(height=max(0, h))
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+                canvas.after(8, lambda: _shrink(int(h * 0.45)))
+            except tk.TclError:
+                pass
+
+        def _cleanup():
+            try:
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(0)
+            except tk.TclError:
+                pass
+            self._lp_state['bounce'] = False
+
+        _grow(4)
+
+    def _lp_bounce_bottom(self):
+        if self._lp_state['bounce']:
+            return
+        self._lp_state['bounce'] = True
+
+        canvas = self._lp_canvas
+        inner = self._lp_inner
+        BOUNCE_PX = 40
+
+        spacer = tk.Frame(inner, bg="white", height=0)
+        spacer.pack(fill=tk.X)
+
+        def _grow(h):
+            try:
+                if h >= BOUNCE_PX:
+                    canvas.after(15, lambda: _shrink(BOUNCE_PX))
+                    return
+                spacer.configure(height=h)
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(1)
+                canvas.after(7, lambda: _grow(h + 7))
+            except tk.TclError:
+                pass
+
+        def _shrink(h):
+            try:
+                if h <= 1:
+                    spacer.destroy()
+                    canvas.after(15, _cleanup)
+                    return
+                spacer.configure(height=max(0, h))
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+                canvas.yview_moveto(1)
+                canvas.after(8, lambda: _shrink(int(h * 0.45)))
+            except tk.TclError:
+                pass
+
+        def _cleanup():
+            try:
+                sr = canvas.bbox("all")
+                if sr:
+                    canvas.configure(scrollregion=sr)
+                    self._lp_cached_content_h = sr[3] - sr[1]
+            except tk.TclError:
+                pass
+            self._lp_state['bounce'] = False
+
+        _grow(4)
+
+    # =====================================================================
 
     def _show_tooltip(self, event, text):
         if hasattr(self, '_tooltip') and self._tooltip:
@@ -1101,6 +2042,17 @@ class HNUSTExamSystem:
 
         self._ensure_panel_open(q_type)
         self._update_nav_status()
+
+        # ★ 切换题目时：回到顶部 + 停止残留惯性 + 重新绑定滚轮
+        try:
+            self._lp_state['vel'] = 0.0
+            if self._lp_state.get('aid') is not None:
+                self._lp_canvas.after_cancel(self._lp_state['aid'])
+                self._lp_state['aid'] = None
+            self._lp_canvas.yview_moveto(0)
+            self._lp_bind_mw(self._lp_inner)
+        except (tk.TclError, AttributeError):
+            pass
 
     def _ensure_panel_open(self, q_type):
         if q_type in self.nav_panels:
@@ -1261,8 +2213,8 @@ class HNUSTExamSystem:
 
     def _update_nav_status(self):
         answered_count = len(self.user_answers)
+        marked_count = len(self.marked_questions)
 
-        # ★ 改动4：使用动态题型顺序
         used_type_order = self.active_type_order
 
         for q_type in used_type_order:
@@ -1277,17 +2229,34 @@ class HNUSTExamSystem:
                 btn = self.nav_q_buttons[global_idx]
 
                 if global_idx == self.current_index:
-                    btn.config(bg=Theme.NAV_CURRENT, fg="white",
-                               font=("微软雅黑", 9, "bold"))
+                    bg_color = Theme.NAV_CURRENT
+                    fg_color = "white"
+                    font = ("微软雅黑", 9, "bold")
                 elif global_num in self.user_answers:
-                    btn.config(bg=Theme.NAV_ANSWERED, fg="white",
-                               font=("微软雅黑", 9))
+                    bg_color = Theme.NAV_ANSWERED
+                    fg_color = "white"
+                    font = ("微软雅黑", 9)
                 else:
-                    btn.config(bg="white", fg=Theme.TEXT,
-                               font=("微软雅黑", 9))
+                    bg_color = "white"
+                    fg_color = Theme.TEXT
+                    font = ("微软雅黑", 9)
+
+                btn_text = f"  第{type_idx + 1}题（{global_num}）"
+                if global_idx in self.marked_questions:
+                    btn_text = "🚩" + btn_text.strip()
+                    if global_idx != self.current_index and global_num not in self.user_answers:
+                        fg_color = Theme.NAV_MARKED
+
+                btn.config(text=btn_text, bg=bg_color, fg=fg_color, font=font)
+
+        if hasattr(self, 'mark_btn'):
+            if self.current_index in self.marked_questions:
+                self.mark_btn.config(text="取消标记", fg=Theme.NAV_MARKED)
+            else:
+                self.mark_btn.config(text="标记试题", fg=Theme.TEXT)
 
         self.status_label.config(
-            text=f"未答 {len(self.questions) - answered_count}，已答 {answered_count}，标记 0")
+            text=f"未答 {len(self.questions) - answered_count}，已答 {answered_count}，标记 {marked_count}")
         self._update_progress()
 
     def _update_progress(self):
@@ -1331,6 +2300,13 @@ class HNUSTExamSystem:
         if self.current_index < len(self.questions) - 1:
             self.current_index += 1
             self.show_question()
+
+    def toggle_mark(self):
+        if self.current_index in self.marked_questions:
+            self.marked_questions.remove(self.current_index)
+        else:
+            self.marked_questions.add(self.current_index)
+        self._update_nav_status()
 
     def show_answer(self):
         q = self.questions[self.current_index]
@@ -1474,6 +2450,8 @@ class HNUSTExamSystem:
             ("总题数", str(total), Theme.TEXT),
             ("已作答", str(answered), Theme.SUCCESS),
             ("未作答", str(unanswered), Theme.DANGER if unanswered > 0 else Theme.TEXT),
+            ("标记数", str(len(self.marked_questions)),
+             Theme.NAV_MARKED if len(self.marked_questions) > 0 else Theme.TEXT),
         ]
 
         for label, value, color in stats_data:
@@ -1650,24 +2628,19 @@ class HNUSTExamSystem:
                   command=self.create_select_window).pack(side=tk.RIGHT)
 
 
-# ★★★ 核心修改3：主入口增加全局异常捕获 ★★★
 if __name__ == "__main__":
     try:
-        # ★★★ 必须在创建Tk()之前设置AppUserModelID ★★★
         if sys.platform == "win32":
             import ctypes
-
-            # 这个ID必须唯一，建议用"公司名.产品名.版本号"格式
             app_id = "HNUST.ExamSystem.V1.0"
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(app_id)
 
         root = tk.Tk()
 
-        # ★★★ 立即设置窗口图标（在任何其他操作之前）★★★
         icon_path = get_resource_path("icon.ico")
         if os.path.exists(icon_path):
             try:
-                root.iconbitmap(default=icon_path)  # 注意加了default参数
+                root.iconbitmap(default=icon_path)
                 root.iconbitmap(icon_path)
             except Exception as e:
                 print(f"设置图标失败: {e}")
@@ -1675,7 +2648,6 @@ if __name__ == "__main__":
         app = HNUSTExamSystem(root)
         root.mainloop()
     except Exception as e:
-        # 全局异常捕获（保持不变）
         import traceback
 
         log_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "error.log")
@@ -1695,6 +2667,3 @@ if __name__ == "__main__":
                 pass
         except Exception:
             pass
-
-
-#🔔 划重点：不用管这些，直接往下看介绍就好！
