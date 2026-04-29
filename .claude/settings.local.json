@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(.venv/Scripts/python.exe *)",
+      "Bash(.venv/Scripts/pip.exe install *)",
+      "Bash(where python *)",
+      "Bash(C:\\\\Users\\\\Hyper_hui\\\\AppData\\\\Local\\\\Python\\\\bin\\\\python.exe *)",
+      "Bash(pip install *)",
+      "Bash(C:\\\\Users\\\\Hyper_hui\\\\AppData\\\\Local\\\\Python\\\\pythoncore-3.14-64\\\\python.exe *)",
+      "Bash(/c/Users/Hyper_hui/AppData/Local/Python/pythoncore-3.14-64/python.exe *)",
+      "Bash(\"/c/Users/Hyper_hui/AppData/Local/Python/pythoncore-3.14-64/python.exe\" -m py_compile hnust_exam/views/dialogs/python_env_dialog.py)",
+      "Bash(\"/c/Users/Hyper_hui/AppData/Local/Python/pythoncore-3.14-64/python.exe\" -m py_compile hnust_exam/views/main_window.py hnust_exam/views/exam_page.py hnust_exam/views/select_page.py hnust_exam/views/dialogs/settings_dialog.py hnust_exam/views/dialogs/submit_dialog.py)",
+      "Bash(\"/c/Users/Hyper_hui/AppData/Local/Python/pythoncore-3.14-64/python.exe\" -m py_compile hnust_exam/views/dialogs/submit_dialog.py hnust_exam/views/dialogs/settings_dialog.py hnust_exam/views/dialogs/review_dialog.py hnust_exam/views/dialogs/python_env_dialog.py hnust_exam/views/dialogs/update_dialog.py)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "Bash(\"C:/Users/Hyper_hui/PycharmProjects/PythonProject1/.venv/Scripts/python.exe\" -m pytest tests/ -v)",
+      "Bash(py -m pytest tests/ -v)",
+      "Bash(C:/Users/Hyper_hui/PycharmProjects/PythonProject1/.venv/Scripts/python.exe *)",
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Read(//c/c/Users/Hyper_hui/PycharmProjects/PythonProject1/hnust_exam/views/dialogs/**)",
+      "Read(//c/c/Users/Hyper_hui/PycharmProjects/PythonProject1/hnust_exam/views/**)",
+      "Bash(.venv/Scripts/python -c \"from PySide6.QtWidgets import QScrollerProperties; print\\('OK QtWidgets'\\)\")",
+      "Bash(.venv/Scripts/python -c \"from PySide6.QtGui import QScrollerProperties; print\\('OK QtGui'\\)\")"
+    ]
+  }
+}
