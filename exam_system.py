@@ -412,18 +412,26 @@ class HNUSTExamSystem:
 
     def create_select_window(self):
         self._clear_window()
-
+        # === 1. 顶部标题栏（水平布局） ===
         title_bar = tk.Frame(self.root, bg=Theme.PRIMARY, height=60)
         title_bar.pack(fill=tk.X)
+        title_bar.pack_propagate(False)
+
+        # 左侧：logo/标题
         tk.Label(title_bar, text="🌐 HNUST仿真平台",
                  bg=Theme.PRIMARY, fg="white",
                  font=("微软雅黑", 16, "bold")).pack(side=tk.LEFT, padx=20, pady=10)
-
+        # 右侧：状态/用户信息（水平布局）
+        status_frame = tk.Frame(title_bar, bg=Theme.PRIMARY)
+        status_frame.pack(side=tk.RIGHT, padx=20)
+        tk.Label(status_frame, text="📁 选择试卷", 
+                 bg=Theme.PRIMARY, fg="#cce0ff",
+                 font=("微软雅黑", 10)).pack(side=tk.RIGHT, padx=5)
+        
+        
+        # === 2. 主内容区（垂直布局，居中）===
         main_frame = tk.Frame(self.root, bg=Theme.BG)
-        main_frame.pack(fill=tk.BOTH, expand=True)
-
-        tk.Label(main_frame, text="请选择试卷",
-                 font=("微软雅黑", 24, "bold"), bg=Theme.BG).pack(pady=80)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
 
         exam_dir = get_resource_path("题库")
         if not os.path.exists(exam_dir):
@@ -439,28 +447,75 @@ class HNUSTExamSystem:
             tk.Label(main_frame, text="题库文件夹中没有找到试卷文件",
                      font=("微软雅黑", 14), fg="red", bg=Theme.BG).pack(pady=20)
             return
+        # 试卷列表容器
+        list_container = tk.Frame(main_frame, bg="white", bd=1, relief=tk.SOLID)
+        list_container.pack(fill=tk.BOTH, expand=True)
 
-        list_frame = tk.Frame(main_frame, bg="white", bd=1, relief=tk.SOLID)
-        list_frame.pack(pady=20)
+        # 列表标题（水平布局）
+        list_header = tk.Frame(list_container, bg="#f8f9fa", height=30)
+        list_header.pack(fill=tk.X)
+        list_header.pack_propagate(False)
+        
+        tk.Label(list_header, text="📄 试卷列表",
+                 font=("微软雅黑", 11, "bold"), bg="#f8f9fa").pack(side=tk.LEFT, padx=10, pady=5)
+        # 列表框（带滚动条）
+        list_frame = tk.Frame(list_container, bg="white")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 2))
+        
+        # 滚动条
+        scrollbar = tk.Scrollbar(list_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
+        # 列表框
         self.exam_listbox = tk.Listbox(
-            list_frame, font=("微软雅黑", 14), width=50, height=12,
-            bd=0, highlightthickness=0, selectbackground=Theme.PRIMARY)
+            list_frame, 
+            font=("微软雅黑", 12),
+            yscrollcommand=scrollbar.set,
+            bd=0,
+            highlightthickness=0,
+            selectbackground=Theme.PRIMARY,
+            selectforeground="white"
+        )
+        self.exam_listbox.pack(fill=tk.BOTH, expand=True)
+        scrollbar.config(command=self.exam_listbox.yview)
+        # 填充数据
         for file in self.exam_files:
             self.exam_listbox.insert(tk.END, os.path.splitext(file)[0])
         self.exam_listbox.selection_set(0)
-        self.exam_listbox.pack(padx=2, pady=2)
-
+        
         self.exam_listbox.bind("<Double-Button-1>", lambda e: self.start_exam())
         self.exam_listbox.bind("<Return>", lambda e: self.start_exam())
 
-        tk.Button(main_frame, text="开始考试",
-                  font=("微软雅黑", 16, "bold"), command=self.start_exam,
-                  bg=Theme.PRIMARY, fg="white",
-                  padx=40, pady=12, bd=0, cursor="hand2").pack(pady=40)
 
-        tk.Label(main_frame, text="该程序免费提供给HNUST学生使用，禁止任何形式的商用售卖",
-                 font=("微软雅黑", 8), bg=Theme.BG, fg=Theme.MUTED).pack(side=tk.BOTTOM, pady=10)
+        # === 底部操作栏（水平布局） ===
+        bottom_frame = tk.Frame(self.root, bg=Theme.BG, height=60)
+        bottom_frame.pack(fill=tk.X, pady=(15, 0))
+        bottom_frame.pack_propagate(False)
+        
+        # 左侧：版权信息
+        copyright_label = tk.Label(
+            bottom_frame,
+            text="该程序免费提供给HNUST学生使用，禁止任何形式的商用售卖",
+            font=("微软雅黑", 8), 
+            bg=Theme.BG, 
+            fg=Theme.MUTED
+        )
+        copyright_label.pack(side=tk.LEFT, padx=10)
+        
+        # 右侧：开始考试按钮
+        start_button = tk.Button(
+            bottom_frame,
+            text="▶️ 开始考试",
+            font=("微软雅黑", 12, "bold"),
+            command=self.start_exam,
+            bg=Theme.PRIMARY,
+            fg="white",
+            padx=30,
+            pady=8,
+            bd=0,
+            cursor="hand2"
+        )
+        start_button.pack(side=tk.RIGHT, padx=10)
 
     def start_exam(self):
         selected = self.exam_listbox.curselection()
