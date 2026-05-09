@@ -29,7 +29,7 @@ except ImportError:
 # =====================================================================
 #  常量与路径
 # =====================================================================
-CURRENT_VERSION = "v1.0.5"
+CURRENT_VERSION = "v1.1.1"
 GITHUB_USERNAME = "RyanTanC"
 GITHUB_REPO_NAME = "HNUST-Exam-System"
 

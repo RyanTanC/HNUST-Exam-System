@@ -69,7 +69,7 @@ PythonProject1/
 
 【utils/constants.py】（常量 - 存放固定不变的值）
   存放程序用到的所有"固定值"：
-  - CURRENT_VERSION = "v1.0.5"  ← 版本号，发新版本时改这里
+  - CURRENT_VERSION = "v1.1.1"  ← 版本号，发新版本时改这里
   - GITHUB_USERNAME = "RyanTanC"  ← GitHub 用户名
   - GITHUB_REPO_NAME = "HNUST-Exam-System"  ← GitHub 仓库名
   - EXAM_TIME_SECONDS = 3600  ← 考试总时间（秒），60分钟=3600秒

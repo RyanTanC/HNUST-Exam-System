@@ -2,7 +2,7 @@
 
 import os
 
-CURRENT_VERSION = "v1.1.0"
+CURRENT_VERSION = "v1.1.1"
 GITHUB_USERNAME = "RyanTanC"
 GITHUB_REPO_NAME = "HNUST-Exam-System"
 
@@ -17,3 +17,6 @@ PROGRAM_TYPES = {"程序设计", "程序填空", "程序改错"}
 EXAM_TIME_SECONDS = 60 * 60
 
 REQUIRED_COLUMNS = {"题号", "题型", "题目", "正确答案", "分值"}
+
+# 匿名使用统计
+TELEMETRY_BASE_URL = "https://hnust-exam-telemetry.hnust-exam-stats.workers.dev"
