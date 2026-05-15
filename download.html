@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="HNUST Python 考试仿真平台 — 下载最新版本">
   <meta name="theme-color" content="#080810">
+  <link rel="icon" type="image/png" href="./images/favicon.png">
+  <link rel="apple-touch-icon" href="./images/favicon.png">
   <title>下载 — HNUST Python 考试仿真平台</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -681,13 +683,90 @@
       .catch(function() { /* 静默失败 */ });
   })();
   </script>
-  <!-- Changelog Typewriter -->
+  <!-- Changelog Typewriter (auto-fetch from README) -->
   <script>
   (function() {
     'use strict';
 
-    /* 📋 更新日志 — Python Console 逐字打字机效果 */
-    var LINES = [
+    var README_URL = 'https://raw.githubusercontent.com/RyanTanC/HNUST-Exam-System/master/README.md';
+    var SPEED = 8;
+
+    var outputEl = document.getElementById('py-output');
+    if (!outputEl) return;
+
+    var lines = [];
+    var lineIdx = 0, charIdx = 0;
+    var curLine = null, txtNode = null, cursorEl = null;
+
+    /* ============== Typewriter Engine ============== */
+
+    function mkCursor() {
+      var s = document.createElement('span');
+      s.className = 'py-cursor-span';
+      s.textContent = '█';
+      return s;
+    }
+
+    function scrollDown() {
+      var box = document.getElementById('py-body');
+      if (box) box.scrollTop = box.scrollHeight;
+    }
+
+    function typeTick() {
+      if (lineIdx >= lines.length) {
+        var fin = document.createElement('div');
+        fin.className = 'py-line';
+        var pp = document.createElement('span'); pp.className = 'prompt'; pp.textContent = '>>> ';
+        fin.appendChild(pp);
+        fin.appendChild(mkCursor());
+        outputEl.appendChild(fin);
+        scrollDown();
+        return;
+      }
+
+      var line = lines[lineIdx], text = line[0], cls = line[1];
+
+      if (!curLine) {
+        curLine = document.createElement('div');
+        curLine.className = 'py-line' + (cls ? ' ' + cls : '');
+        var pr = document.createElement('span'); pr.className = 'prompt'; pr.textContent = '>>> ';
+        curLine.appendChild(pr);
+        txtNode = document.createTextNode('');
+        curLine.appendChild(txtNode);
+        cursorEl = mkCursor();
+        curLine.appendChild(cursorEl);
+        outputEl.appendChild(curLine);
+        scrollDown();
+      }
+
+      if (charIdx < text.length) {
+        txtNode.appendData(text[charIdx]);
+        charIdx++;
+        scrollDown();
+        var ch = text[charIdx - 1];
+        var d = SPEED;
+        if ('。：，！？；'.indexOf(ch) !== -1) d = SPEED * 6;
+        else if (' ——-'.indexOf(ch) !== -1) d = SPEED * 2;
+        setTimeout(typeTick, d);
+      } else {
+        if (cursorEl && cursorEl.parentNode) cursorEl.parentNode.removeChild(cursorEl);
+        cursorEl = null; txtNode = null;
+        lineIdx++; charIdx = 0; curLine = null;
+        setTimeout(typeTick, SPEED * 3);
+      }
+    }
+
+    function startTyper(data) {
+      lines = data;
+      lineIdx = 0; charIdx = 0;
+      curLine = null; txtNode = null; cursorEl = null;
+      outputEl.innerHTML = '';
+      setTimeout(typeTick, 400);
+    }
+
+    /* ============== Fallback Data ============== */
+
+    var FALLBACK = [
       ["# HNUST 考试仿真平台 — 更新日志", "heading"],
       ["", ""],
       ["v1.1.1 — 2026-05-08", "version"],
@@ -738,71 +817,90 @@
       ["  ✨ 实现考试、判分等核心基础功能", "feat"],
     ];
 
-    var SPEED = 8;  // ms per character
+    /* ============== README Changelog Parser ============== */
 
-    var outputEl = document.getElementById('py-output');
-    if (!outputEl) return;
+    function parseChangelog(md) {
+      var start = md.indexOf('## 📋 更新日志');
+      if (start === -1) start = md.indexOf('## 更新日志');
+      if (start === -1) return null;
 
-    var lineIdx = 0, charIdx = 0;
-    var curLine = null, txtNode = null, cursorEl = null;
+      var sec = md.substring(start);
+      // Find next ## (but not ###) heading or EOF
+      var end = -1, pos = 1;
+      while (pos < sec.length) {
+        var idx = sec.indexOf('\n## ', pos);
+        if (idx === -1) break;
+        if (sec.charAt(idx + 4) !== '#') { end = idx; break; }
+        pos = idx + 1;
+      }
+      if (end !== -1) sec = sec.substring(0, end);
 
-    function mkCursor() {
-      var s = document.createElement('span');
-      s.className = 'py-cursor-span';
-      s.textContent = '█';
-      return s;
-    }
+      var result = [];
+      var secLines = sec.split('\n');
+      var started = false;
 
-    function scrollDown() {
-      var box = document.getElementById('py-body');
-      if (box) box.scrollTop = box.scrollHeight;
-    }
+      for (var i = 0; i < secLines.length; i++) {
+        var raw = secLines[i];
+        if (!started) { if (/^##\s/.test(raw)) started = true; continue; }
 
-    function typeTick() {
-      if (lineIdx >= LINES.length) {
-        var fin = document.createElement('div');
-        fin.className = 'py-line';
-        var pp = document.createElement('span'); pp.className = 'prompt'; pp.textContent = '>>> ';
-        fin.appendChild(pp);
-        fin.appendChild(mkCursor());
-        outputEl.appendChild(fin);
-        scrollDown();
-        return;
+        // Version: ### v1.1.1 (2026-05-08)
+        var vm = raw.match(/^###\s+(v[\d.]+\S*)\s*\((\d{4}-\d{2}-\d{2})\)/);
+        if (vm) {
+          if (result.length > 0) result.push(['', '']);
+          result.push([vm[1] + ' — ' + vm[2], 'version']);
+          continue;
+        }
+
+        // Subsection: #### Title
+        var sm = raw.match(/^####\s+(.+)/);
+        if (sm) {
+          result.push(['  ' + sm[1], 'heading']);
+          continue;
+        }
+
+        // List item: - content
+        var im = raw.match(/^-\s+(.+)/);
+        if (im) {
+          var t = im[1].replace(/\*\*(.+?)\*\*/g, '$1').replace(/`(.+?)`/g, '$1');
+          var c = 'feat';
+          if (/^🐛/.test(t)) c = 'fix';
+          else if (/^🔥/.test(t)) c = 'major';
+          else if (/^✨/.test(t) && /[优化提升]/.test(t)) c = 'opt';
+          result.push(['  ' + t, c]);
+          continue;
+        }
+
+        if (/^\s*$/.test(raw)) result.push(['', '']);
       }
 
-      var line = LINES[lineIdx], text = line[0], cls = line[1];
-
-      if (!curLine) {
-        curLine = document.createElement('div');
-        curLine.className = 'py-line' + (cls ? ' ' + cls : '');
-        var pr = document.createElement('span'); pr.className = 'prompt'; pr.textContent = '>>> ';
-        curLine.appendChild(pr);
-        txtNode = document.createTextNode('');
-        curLine.appendChild(txtNode);
-        cursorEl = mkCursor();
-        curLine.appendChild(cursorEl);
-        outputEl.appendChild(curLine);
-        scrollDown();
-      }
-
-      if (charIdx < text.length) {
-        txtNode.appendData(text[charIdx]);
-        charIdx++;
-        scrollDown();
-        var ch = text[charIdx - 1];
-        var d = SPEED;
-        if ('。：，！？；'.indexOf(ch) !== -1) d = SPEED * 6;
-        else if (' ——-'.indexOf(ch) !== -1) d = SPEED * 2;
-        setTimeout(typeTick, d);
-      } else {
-        if (cursorEl && cursorEl.parentNode) cursorEl.parentNode.removeChild(cursorEl);
-        cursorEl = null; txtNode = null;
-        lineIdx++; charIdx = 0; curLine = null;
-        setTimeout(typeTick, SPEED * 3);
-      }
+      return result.length > 2 ? result : null;
     }
 
-    setTimeout(typeTick, 600);
+    /* ============== Fetch README & Start ============== */
+
+    // Show brief loading indicator
+    var loadEl = document.createElement('div');
+    loadEl.className = 'py-line';
+    loadEl.innerHTML = '<span class="prompt">>>> </span>Fetching changelog from README...';
+    outputEl.appendChild(loadEl);
+
+    fetch(README_URL)
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(md) {
+        var parsed = parseChangelog(md);
+        if (parsed) {
+          parsed.unshift(['', ''], ['# 📋 更新日志 — 自动同步自 GitHub README', 'heading']);
+          startTyper(parsed);
+        } else {
+          startTyper(FALLBACK);
+        }
+      })
+      .catch(function() {
+        startTyper(FALLBACK);
+      });
   })();
   </script>
 </body>
