@@ -269,19 +269,19 @@
       font-size: 1.15rem; margin-bottom: 20px; text-align: center;
     }
     .gallery-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
     }
     .gallery-item {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; overflow: hidden;
-      transition: transform 0.3s ease, border-color 0.3s ease;
+      border-radius: 16px; overflow: hidden; cursor: zoom-in;
+      transition: border-color 0.3s ease;
     }
-    .gallery-item:hover { transform: translateY(-4px); border-color: rgba(var(--primary-rgb), 0.3); }
+    .gallery-item:hover { border-color: rgba(var(--primary-rgb), 0.3); }
+    .gallery-item:hover .gallery-img { transform: scale(2); }
     .gallery-img {
-      width: 100%; aspect-ratio: 16/10; object-fit: cover;
+      width: 100%; aspect-ratio: 16/10; object-fit: contain; padding: 4px;
       background: rgba(255,255,255,0.03);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 2rem; color: var(--text-dim);
+      transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
     }
     .gallery-img-placeholder {
       width: 100%; aspect-ratio: 16/10;
@@ -442,6 +442,9 @@
         </div>
         <div class="gallery-item">
           <img class="gallery-img" src="./images/3.png" alt="考试界面">
+        </div>
+        <div class="gallery-item">
+          <img class="gallery-img" src="./images/4.png" alt="成绩查询">
         </div>
       </div>
     </div>
