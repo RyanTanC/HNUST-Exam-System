@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HNUST Python 考试仿真平台 — 留言反馈">
+  <meta name="theme-color" content="#080810">
+  <link rel="icon" type="image/png" href="./images/favicon.png">
+  <link rel="apple-touch-icon" href="./images/favicon.png">
+  <title>留言反馈 — HNUST Python 考试仿真平台</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================================================
+       FONT-FACE (Self-hosted PingFang)
+       ================================================ */
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC'), local('PingFangSC-Regular'),
+           url('./fonts/PingFangRegular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Medium'), local('PingFangSC-Medium'),
+           url('./fonts/PingFangMedium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Semibold'), local('PingFangSC-Semibold'),
+           url('./fonts/PingFangBold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* ================================================
+       CUSTOM PROPERTIES
+       ================================================ */
+    :root {
+      --bg: #080810;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --border-light: rgba(255,255,255,0.1);
+      --primary: #8b5cf6;
+      --primary-rgb: 139,92,246;
+      --accent: #22d3ee;
+      --accent-rgb: 34,211,238;
+      --text: #f0ece4;
+      --text-muted: rgba(240,236,228,0.55);
+      --text-dim: rgba(240,236,228,0.25);
+      --font-display: 'Syne', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-body: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    /* RESET */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-body);
+      overflow-x: hidden; line-height: 1.6;
+      font-synthesis: none; text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { border: none; background: none; font: inherit; color: inherit; cursor: pointer; }
+    img { max-width: 100%; display: block; }
+
+    /* Noise overlay */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+    /* Background orbs */
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+    .orb-1 {
+      width: 600px; height: 600px; top: -10%; right: -10%;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%);
+      animation: orb-float-1 20s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 500px; height: 500px; bottom: -5%; left: -10%;
+      background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
+      animation: orb-float-2 25s ease-in-out infinite;
+    }
+
+    /* Cursor glow */
+    #cursor-glow {
+      position: fixed; width: 400px; height: 400px; border-radius: 50%;
+      pointer-events: none; z-index: 1; will-change: transform;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%);
+      filter: blur(60px); transform: translate(-500px, -500px);
+    }
+    @media (hover: none) { #cursor-glow { display: none; } }
+
+    /* LAYOUT */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 0.82rem;
+      color: var(--text-muted); transition: color 0.3s ease, transform 0.3s ease;
+      padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .back-link:hover { color: var(--primary); transform: translateX(-4px); border-color: rgba(var(--primary-rgb), 0.3); }
+
+    /* Page wrapper */
+    .page-wrapper {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center;
+      padding: 60px 24px 80px; position: relative; z-index: 2;
+    }
+
+    /* ================================================
+       TWIKOO DARK THEME OVERRIDES
+       ================================================ */
+    .comment-card {
+      max-width: 680px; width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 28px; padding: 48px 40px;
+      position: relative; overflow: hidden;
+      backdrop-filter: blur(12px);
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) both;
+      margin-top: 40px;
+    }
+    .comment-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.1), transparent 60%);
+    }
+    .comment-card > * { position: relative; z-index: 1; }
+
+    .comment-header {
+      text-align: center; margin-bottom: 32px;
+    }
+    .comment-header h1 {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(1.3rem, 2.5vw + 0.3rem, 1.8rem);
+      margin-bottom: 8px;
+    }
+    .comment-header p {
+      color: var(--text-muted); font-size: 0.9rem;
+    }
+
+    #tcomment {
+      --twikoo-bg: transparent;
+      --twikoo-bg-light: rgba(255,255,255,0.02);
+      --twikoo-bg-hover: rgba(255,255,255,0.04);
+      --twikoo-primary: #8b5cf6;
+      --twikoo-primary-light: rgba(139,92,246,0.15);
+      --twikoo-border: rgba(255,255,255,0.06);
+      --twikoo-border-hover: rgba(255,255,255,0.1);
+      --twikoo-text: #f0ece4;
+      --twikoo-muted: rgba(240,236,228,0.45);
+      --twikoo-bg-input: rgba(255,255,255,0.04);
+      --twikoo-bg-btn: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      --twikoo-color-btn: #fff;
+      --twikoo-font-family: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --twikoo-font-size: 0.88rem;
+      --twikoo-border-radius: 12px;
+    }
+    #tcomment .tk-comments-container { margin-bottom: 0; }
+    #tcomment .tk-comment {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 16px; margin-bottom: 12px;
+    }
+    #tcomment .tk-avatar { width: 36px; height: 36px; border-radius: 50%; }
+    #tcomment .tk-content { font-size: 0.88rem; line-height: 1.6; }
+    #tcomment .tk-content a { color: var(--primary); }
+    #tcomment .tk-time { color: var(--text-dim); font-size: 0.75rem; }
+    #tcomment .tk-input {
+      background: rgba(255,255,255,0.04) !important;
+      border: 1px solid rgba(255,255,255,0.06) !important;
+      border-radius: 10px !important;
+      color: var(--text) !important;
+      font-family: var(--font-body) !important;
+    }
+    #tcomment .tk-input:focus { border-color: rgba(139,92,246,0.3) !important; }
+    #tcomment .tk-btn-primary {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important;
+      border: none !important; border-radius: 999px !important;
+      color: #fff !important; font-weight: 500 !important;
+    }
+    #tcomment .tk-meta { color: var(--text-dim); font-size: 0.78rem; }
+    #tcomment .tk-nick { color: var(--primary); font-weight: 500; }
+    #tcomment .tk-tag { background: rgba(139,92,246,0.15); color: var(--primary); border: none; border-radius: 6px; }
+    #tcomment .tk-comment:has(.tk-replies) { margin-bottom: 0; }
+    #tcomment .tk-replies { padding-left: 40px; margin-top: 0; }
+    #tcomment .tk-replies .tk-comment {
+      border: none; border-radius: 0; padding: 12px 4px; margin-bottom: 0;
+      background: transparent; border-top: 1px solid rgba(255,255,255,0.04);
+    }
+    #tcomment .tk-emoji-list { background: transparent; border: 1px solid var(--border); }
+    #tcomment .tk-extra { color: var(--text-dim); }
+    #tcomment .tk-action-icon { color: var(--text-dim); }
+    #tcomment .tk-action-icon:hover { color: var(--primary); }
+
+    /* Footer */
+    .cm-footer {
+      max-width: 680px; width: 100%; text-align: center;
+      margin-top: 48px; padding-top: 32px;
+      border-top: 1px solid var(--border);
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) 0.15s both;
+    }
+    .cm-footer p {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      color: rgba(255,255,255,0.18);
+    }
+    .cm-footer .back-home {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.82rem; color: var(--text-muted);
+      margin-bottom: 12px; transition: color 0.3s ease;
+    }
+    .cm-footer .back-home:hover { color: var(--primary); }
+
+    /* ================================================
+       ANIMATIONS
+       ================================================ */
+    @keyframes orb-float-1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(50px,-40px) scale(1.08); } 66% { transform: translate(-30px,30px) scale(0.95); } }
+    @keyframes orb-float-2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-40px,30px) scale(0.92); } 66% { transform: translate(30px,-40px) scale(1.08); } }
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* ================================================
+       RESPONSIVE
+       ================================================ */
+    @media (max-width: 640px) {
+      .page-wrapper { padding: 40px 16px 60px; }
+      .comment-card { padding: 32px 20px; }
+      #tcomment .tk-replies { padding-left: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+  <div id="cursor-glow"></div>
+
+  <div class="page-wrapper">
+
+    <!-- Back link -->
+    <div style="width:100%;max-width:680px">
+      <a href="./index.html?skipLoader=1" class="back-link">
+        <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        返回首页
+      </a>
+    </div>
+
+    <!-- Comment Card -->
+    <div class="comment-card">
+      <div class="comment-header">
+        <h1>留言反馈</h1>
+        <p>欢迎留下您的问题、建议或使用体验（无需登录）</p>
+      </div>
+      <div id="tcomment"></div>
+    </div>
+
+    <!-- Footer -->
+    <div class="cm-footer">
+      <a href="./index.html?skipLoader=1" class="back-home">
+        ← 返回首页
+      </a>
+      <p>© 2026 HNUST Python Exam Platform · GPL-3.0 License</p>
+    </div>
+
+  </div>
+
+  <!-- Cursor Glow Effect -->
+  <script>
+  (function() {
+    'use strict';
+    var mouseX = -500, mouseY = -500;
+    var smoothX = -500, smoothY = -500;
+    var isHoverDevice = window.matchMedia('(hover: hover)').matches;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function initCursorGlow() {
+      if (!isHoverDevice) return;
+      var el = document.getElementById('cursor-glow');
+      if (!el) return;
+
+      document.addEventListener('mousemove', function(e) {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      function tick() {
+        smoothX = lerp(smoothX, mouseX, 0.07);
+        smoothY = lerp(smoothY, mouseY, 0.07);
+        el.style.transform = 'translate(' + (smoothX - 200) + 'px, ' + (smoothY - 200) + 'px)';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initCursorGlow);
+    } else {
+      initCursorGlow();
+    }
+  })();
+  </script>
+
+  <!-- Twikoo Comment System -->
+  <script src="https://cdn.jsdelivr.net/npm/twikoo@1.6.41/dist/twikoo.min.js"></script>
+  <script>
+  (function() {
+    'use strict';
+    twikoo.init({
+      envId: 'https://hnust-twikoo.vercel.app',
+      el: '#tcomment',
+      lang: 'zh-CN',
+    });
+  })();
+  </script>
+</body>
+</html>

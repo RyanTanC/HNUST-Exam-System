@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HNUST Python 考试仿真平台 — 管理后台">
+  <meta name="theme-color" content="#080810">
+  <link rel="icon" type="image/png" href="./images/favicon.png">
+  <link rel="apple-touch-icon" href="./images/favicon.png">
+  <title>管理后台 — HNUST Python 考试仿真平台</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #080810;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --border-light: rgba(255,255,255,0.1);
+      --primary: #8b5cf6;
+      --primary-rgb: 139,92,246;
+      --text: #f0ece4;
+      --text-muted: rgba(240,236,228,0.55);
+      --text-dim: rgba(240,236,228,0.25);
+      --font-display: 'Syne', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-body: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+    html { -webkit-font-smoothing: antialiased; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-body);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+    .card {
+      max-width: 420px; width: 90%;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 24px; padding: 48px 36px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      animation: fade-in 0.6s ease both;
+      position: relative;
+    }
+    .card h1 {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.3rem; margin-bottom: 8px;
+    }
+    .card p {
+      color: var(--text-muted); font-size: 0.88rem;
+      margin-bottom: 28px; line-height: 1.6;
+    }
+    .admin-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 32px; border-radius: 999px;
+      font-weight: 500; font-size: 0.95rem;
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff; text-decoration: none;
+      box-shadow: 0 4px 24px rgba(var(--primary-rgb), 0.3);
+      transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease;
+    }
+    .admin-btn:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
+    .admin-btn:active { transform: scale(0.97); }
+
+    .back-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 24px; font-size: 0.82rem;
+      color: var(--text-dim); text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    .back-link:hover { color: var(--primary); }
+
+    .lock-icon { font-size: 2.4rem; margin-bottom: 16px; display: block; }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @media (max-width: 640px) {
+      .card { padding: 36px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="lock-icon">🔐</span>
+    <h1>管理后台</h1>
+    <p>评论审核、删除、回复等管理操作<br>请在 Twikoo 管理面板中完成</p>
+    <a href="https://hnust-twikoo.vercel.app/admin" class="admin-btn" target="_blank" rel="noopener">
+      前往管理面板
+    </a>
+    <br>
+    <a href="./index.html?skipLoader=1" class="back-link">← 返回首页</a>
+  </div>
+</body>
+</html>
