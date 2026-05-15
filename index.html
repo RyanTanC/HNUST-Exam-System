@@ -1523,28 +1523,6 @@
         .catch(function() { /* 静默失败，保留默认值 */ });
     }
 
-    // ★ 标题鼠标跟随光晕（手电筒效果）
-    function initSubtitleGlow() {
-      if (!isHoverDevice) return;
-      var el = document.getElementById('subtitle-glow');
-      if (!el) return;
-
-      el.addEventListener('mousemove', function(e) {
-        var rect = el.getBoundingClientRect();
-        var mx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
-        var my = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
-        el.style.animation = 'none';
-        // circle 100px 控制光晕半径，颜色在短距离内过渡到暗色
-        el.style.background = 'radial-gradient(circle 100px at ' + mx + '% ' + my + '%, ' +
-          'var(--primary) 0%, var(--accent) 15%, var(--text) 35%, var(--text) 100%)';
-      });
-
-      el.addEventListener('mouseleave', function() {
-        el.style.background = '';
-        el.style.animation = '';
-      });
-    }
-
     // ===================== INIT =====================
     function init() {
       initLoader(function() {
@@ -1568,7 +1546,6 @@
       initFeatureCardTilt();
       initSmoothScroll();
       initVersionInfo();
-      initSubtitleGlow();
     }
 
     if (document.readyState === 'loading') {
