@@ -428,6 +428,65 @@
     }
 
     /* ================================================
+       ALTERNATIVE DOWNLOAD CARDS
+       ================================================ */
+    .alt-dl-section {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+    .alt-dl-divider {
+      text-align: center; margin-bottom: 16px;
+      font-family: var(--font-mono); font-size: 0.72rem;
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .alt-dl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .alt-dl-card {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 16px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      text-align: center;
+      transition: border-color 0.3s ease, transform 0.25s cubic-bezier(.175,.885,.32,1.275), background 0.3s ease;
+      cursor: pointer;
+    }
+    .alt-dl-card:hover {
+      border-color: rgba(var(--primary-rgb), 0.3);
+      background: rgba(var(--primary-rgb), 0.05);
+      transform: translateY(-2px);
+    }
+    .alt-dl-card:active {
+      transform: scale(0.97);
+    }
+    .alt-dl-icon {
+      font-size: 1.5rem; line-height: 1;
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px;
+      background: rgba(var(--primary-rgb), 0.08);
+      border-radius: 10px;
+      margin-bottom: 2px;
+    }
+    .alt-dl-icon svg {
+      width: 20px; height: 20px;
+    }
+    .alt-dl-card.baidu .alt-dl-icon svg { color: #2753e0; }
+    .alt-dl-card.pan123 .alt-dl-icon svg { color: #ff6a00; }
+    .alt-dl-title {
+      font-weight: 600; font-size: 0.88rem;
+      color: rgba(255,255,255,0.85);
+    }
+    .alt-dl-desc {
+      font-size: 0.7rem; color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* ================================================
        RESPONSIVE
        ================================================ */
     @media (max-width: 640px) {
@@ -436,6 +495,7 @@
       .dl-info { grid-template-columns: 1fr; gap: 12px; }
       .gallery-grid { grid-template-columns: 1fr; }
       .btn-lg { padding: 14px 24px; font-size: 0.95rem; }
+      .alt-dl-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -447,6 +507,8 @@
     <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
     <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></symbol>
+    <symbol id="i-database" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></symbol>
   </svg>
 
   <!-- Background -->
@@ -508,6 +570,23 @@
           </a>
         </div>
         <p class="dl-note" id="dl-note">Windows 系统 · 免费开源 · 自动更新</p>
+
+        <!-- Alternative download options -->
+        <div class="alt-dl-section">
+          <div class="alt-dl-divider">其他下载方式</div>
+          <div class="alt-dl-grid">
+            <a href="https://pan.baidu.com/s/5MyCpAIYS1itBgGMaplJokQ" class="alt-dl-card baidu" target="_blank" rel="noopener">
+              <span class="alt-dl-icon"><svg><use href="#i-cloud"/></svg></span>
+              <span class="alt-dl-title">百度网盘</span>
+              <span class="alt-dl-desc">不限速下载</span>
+            </a>
+            <a href="https://1820651549.share.123865.com/123pan/Nrp1jv-f4Xmd" class="alt-dl-card pan123" target="_blank" rel="noopener">
+              <span class="alt-dl-icon"><svg><use href="#i-database"/></svg></span>
+              <span class="alt-dl-title">123 云盘</span>
+              <span class="alt-dl-desc">不限速下载</span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
       </div>
