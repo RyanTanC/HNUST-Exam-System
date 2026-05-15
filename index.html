@@ -1572,12 +1572,22 @@
 
     // ===================== INIT =====================
     function init() {
-      initLoader(function() {
+      var skipLoader = location.search.indexOf('skipLoader=1') !== -1;
+      if (skipLoader) {
+        var loader = document.getElementById('loader');
+        if (loader) loader.style.display = 'none';
         initScrollReveal();
         initCounters();
         initTypewriter();
         initTextScramble();
-      });
+      } else {
+        initLoader(function() {
+          initScrollReveal();
+          initCounters();
+          initTypewriter();
+          initTextScramble();
+        });
+      }
 
       // 以下在 DOMContentLoaded 时即可运行，无需等 loader
       initMatrixRain();
