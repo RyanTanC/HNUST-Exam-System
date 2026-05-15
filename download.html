@@ -771,6 +771,11 @@
         fin.appendChild(mkCursor());
         outputEl.appendChild(fin);
         scrollDown();
+        // Pause then scroll back to top
+        setTimeout(function() {
+          var box = document.getElementById('py-body');
+          if (box) box.scrollTop = 0;
+        }, 1500);
         return;
       }
 
@@ -942,7 +947,7 @@
       .then(function(md) {
         var parsed = parseChangelog(md);
         if (parsed) {
-          parsed.unshift(['', ''], ['# 📋 更新日志 — 自动同步自 GitHub README', 'heading']);
+          parsed.unshift(['', ''], ['# 📋 更新日志', 'heading']);
           startTyper(parsed);
         } else {
           startTyper(FALLBACK);
