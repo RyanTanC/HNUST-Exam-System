@@ -771,10 +771,22 @@
         fin.appendChild(mkCursor());
         outputEl.appendChild(fin);
         scrollDown();
-        // Pause then scroll back to top
+        // Pause then smooth-scroll back to top with easing
         setTimeout(function() {
           var box = document.getElementById('py-body');
-          if (box) box.scrollTop = 0;
+          if (!box) return;
+          var start = box.scrollTop;
+          var duration = 800;
+          var startTime = null;
+          function ease(t) { return 1 - Math.pow(1 - t, 3); } // cubic out
+          function scroll(now) {
+            if (!startTime) startTime = now;
+            var elapsed = now - startTime;
+            var p = Math.min(elapsed / duration, 1);
+            box.scrollTop = start * (1 - ease(p));
+            if (p < 1) requestAnimationFrame(scroll);
+          }
+          requestAnimationFrame(scroll);
         }, 1500);
         return;
       }
