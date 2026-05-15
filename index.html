@@ -16,6 +16,34 @@
 
   <style>
     /* ================================================
+       FONT-FACE (Self-hosted PingFang)
+       ================================================ */
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC'), local('PingFangSC-Regular'),
+           url('./fonts/PingFangRegular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Medium'), local('PingFangSC-Medium'),
+           url('./fonts/PingFangMedium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Semibold'), local('PingFangSC-Semibold'),
+           url('./fonts/PingFangBold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* ================================================
        CUSTOM PROPERTIES
        ================================================ */
     :root {
@@ -753,8 +781,8 @@
 
           <h1 class="hero-title" data-reveal style="transition-delay:0.1s">
             <!-- ★ data-scramble 用于文字扰码效果 -->
-            <span class="glitch scramble-text" data-text="Python考试" data-scramble="Python考试">Python考试</span><br>
-            <span class="shimmer">仿真平台</span>
+            <span>HNUST</span><br>
+            <span>考试仿真平台</span>
           </h1>
 
           <p class="hero-desc" data-reveal style="transition-delay:0.2s">

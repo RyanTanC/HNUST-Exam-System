@@ -13,6 +13,34 @@
 
   <style>
     /* ================================================
+       FONT-FACE (Self-hosted PingFang)
+       ================================================ */
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC'), local('PingFangSC-Regular'),
+           url('./fonts/PingFangRegular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Medium'), local('PingFangSC-Medium'),
+           url('./fonts/PingFangMedium.ttf') format('truetype');
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Semibold'), local('PingFangSC-Semibold'),
+           url('./fonts/PingFangBold.ttf') format('truetype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    /* ================================================
        CUSTOM PROPERTIES
        ================================================ */
     :root {
@@ -70,6 +98,15 @@
       background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
       animation: orb-float-2 25s ease-in-out infinite;
     }
+
+    /* Cursor glow */
+    #cursor-glow {
+      position: fixed; width: 400px; height: 400px; border-radius: 50%;
+      pointer-events: none; z-index: 1; will-change: transform;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%);
+      filter: blur(60px); transform: translate(-500px, -500px);
+    }
+    @media (hover: none) { #cursor-glow { display: none; } }
 
     /* LAYOUT */
     .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
@@ -318,6 +355,7 @@
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
   </div>
+  <div id="cursor-glow"></div>
 
   <div class="page-wrapper">
 
@@ -484,6 +522,43 @@
       document.addEventListener('DOMContentLoaded', fetchRelease);
     } else {
       fetchRelease();
+    }
+  })();
+  </script>
+
+  <!-- Cursor Glow Effect -->
+  <script>
+  (function() {
+    'use strict';
+    var mouseX = -500, mouseY = -500;
+    var smoothX = -500, smoothY = -500;
+    var isHoverDevice = window.matchMedia('(hover: hover)').matches;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function initCursorGlow() {
+      if (!isHoverDevice) return;
+      var el = document.getElementById('cursor-glow');
+      if (!el) return;
+
+      document.addEventListener('mousemove', function(e) {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      function tick() {
+        smoothX = lerp(smoothX, mouseX, 0.07);
+        smoothY = lerp(smoothY, mouseY, 0.07);
+        el.style.transform = 'translate(' + (smoothX - 200) + 'px, ' + (smoothY - 200) + 'px)';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initCursorGlow);
+    } else {
+      initCursorGlow();
     }
   })();
   </script>
