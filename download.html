@@ -322,6 +322,12 @@
     .dl-footer .contributors .sep {
       color: rgba(255,255,255,0.12);
     }
+    .dl-footer .contributors a {
+      color: inherit; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .dl-footer .contributors a:hover {
+      color: var(--primary); text-decoration: underline;
+    }
 
     /* ================================================
        ANIMATIONS
@@ -443,7 +449,7 @@
     <!-- Footer -->
     <div class="dl-footer">
       <div class="contributors" id="contributors">
-        <span class="author"><img src="https://avatars.githubusercontent.com/u/146148528?v=4" alt="" loading="lazy"> <span>RyanTanC</span></span>
+        <span class="author"><a href="https://github.com/RyanTanC" target="_blank" rel="noopener"><img src="https://github.com/RyanTanC.png" alt="" loading="lazy" referrerpolicy="no-referrer"> <span>RyanTanC</span></a></span>
         <span class="sep">·</span>
         <span>Contributors</span>
       </div>
@@ -589,10 +595,10 @@
         if (!container) return;
         var others = data.filter(function(u) { return u.login !== 'RyanTanC'; });
         if (others.length === 0) return;
-        var html = '<span class="author"><img src="https://avatars.githubusercontent.com/u/146148528?v=4" alt="" loading="lazy"> <span>RyanTanC</span></span>';
+        var html = '<span class="author"><a href="https://github.com/RyanTanC" target="_blank" rel="noopener"><img src="https://github.com/RyanTanC.png" alt="" loading="lazy" referrerpolicy="no-referrer"> <span>RyanTanC</span></a></span>';
         others.forEach(function(u) {
           html += '<span class="sep">·</span>';
-          html += '<span><img src="' + u.avatar_url + '&s=44" alt="" loading="lazy"> <span>' + u.login + '</span></span>';
+          html += '<span><a href="https://github.com/' + u.login + '" target="_blank" rel="noopener"><img src="' + u.avatar_url + '&s=44" alt="" loading="lazy" referrerpolicy="no-referrer"> <span>' + u.login + '</span></a></span>';
         });
         container.innerHTML = html;
       })
