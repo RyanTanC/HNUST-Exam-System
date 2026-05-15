@@ -404,6 +404,25 @@
       50% { opacity: 0; }
     }
 
+    /* ================================================
+       TILT CARD (synced from landing page)
+       ================================================ */
+    .tilt-wrapper {
+      perspective: 1000px;
+    }
+    .tilt-inner {
+      transform-style: preserve-3d;
+      transition: transform 0.15s ease-out;
+      position: relative;
+    }
+    .tilt-inner::after {
+      content: ''; position: absolute; inset: 0; border-radius: 28px;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 20;
+      background: radial-gradient(350px circle at var(--spec-x, 50%) var(--spec-y, 50%),
+        rgba(255,255,255,0.09), transparent 50%);
+    }
+    .tilt-inner:hover::after { opacity: 1; }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
@@ -446,7 +465,9 @@
     </a>
 
     <!-- Download Card -->
-    <div class="dl-card">
+    <div class="tilt-wrapper">
+      <div class="tilt-inner">
+        <div class="dl-card">
       <div class="dl-header">
         <h1>下载 HNUST 仿真平台</h1>
         <p>湖南科技大学 Python 程序设计考试仿真工具</p>
@@ -487,6 +508,8 @@
           </a>
         </div>
         <p class="dl-note" id="dl-note">Windows 系统 · 免费开源 · 自动更新</p>
+      </div>
+    </div>
       </div>
     </div>
 
@@ -658,10 +681,37 @@
       tick();
     }
 
+    // ===================== 3D TILT CARD =====================
+    function initTiltCard() {
+      if (!isHoverDevice) return;
+      var wrapper = document.querySelector('.tilt-wrapper');
+      var inner = document.querySelector('.tilt-inner');
+      if (!wrapper || !inner) return;
+
+      wrapper.addEventListener('mousemove', function(e) {
+        var rect = wrapper.getBoundingClientRect();
+        var nx = (e.clientX - rect.left) / rect.width;
+        var ny = (e.clientY - rect.top) / rect.height;
+        var rx = (ny - 0.5) * -10;
+        var ry = (nx - 0.5) * 10;
+        inner.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+        inner.style.setProperty('--spec-x', (nx * 100) + '%');
+        inner.style.setProperty('--spec-y', (ny * 100) + '%');
+      });
+
+      wrapper.addEventListener('mouseleave', function() {
+        inner.style.transform = 'rotateX(0deg) rotateY(0deg)';
+      });
+    }
+
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initCursorGlow);
+      document.addEventListener('DOMContentLoaded', function() {
+        initCursorGlow();
+        initTiltCard();
+      });
     } else {
       initCursorGlow();
+      initTiltCard();
     }
 
     // ★ 加载 GitHub Contributors
