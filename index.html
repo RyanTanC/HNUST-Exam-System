@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HNUST Python 程序设计考试仿真平台 — 免费开源，1:1 复刻万维考试系统">
+  <meta name="theme-color" content="#080810">
+  <title>HNUST Python 考试仿真平台</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- ★ 修复: 加入 Outfit 作为拉丁正文字体 -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+  <noscript><style>#loader{display:none!important}[data-reveal]{opacity:1!important;transform:none!important}</style></noscript>
+
+  <style>
+    /* ================================================
+       CUSTOM PROPERTIES
+       ================================================ */
+    :root {
+      --bg: #080810;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --border-light: rgba(255,255,255,0.1);
+      --primary: #8b5cf6;
+      --primary-rgb: 139,92,246;
+      --accent: #22d3ee;
+      --accent-rgb: 34,211,238;
+      --text: #f0ece4;
+      --text-muted: rgba(240,236,228,0.55);
+      --text-dim: rgba(240,236,228,0.25);
+      --green: #86efac;
+      --yellow: #fde047;
+      --red: #f87171;
+      --font-display: 'Syne', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      /* ★ 修复: Outfit 优先渲染英文/数字，CJK 回退到 Noto Sans SC */
+      --font-body: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    /* ================================================
+       RESET & BASE
+       ================================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-body);
+      overflow-x: hidden; line-height: 1.6;
+      /* ★ 修复: 阻止浏览器合成伪粗体/伪斜体导致字形变形 */
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { border: none; background: none; font: inherit; color: inherit; cursor: pointer; }
+    img { max-width: 100%; display: block; }
+
+    /* Noise overlay */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+    /* ================================================
+       TYPOGRAPHY
+       ================================================ */
+    h1, h2, h3 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; }
+
+    /* ================================================
+       ICON HELPER
+       ================================================ */
+    .icon { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+    .icon-sm { width: 16px; height: 16px; }
+    .icon-md { width: 20px; height: 20px; }
+    .icon-lg { width: 24px; height: 24px; }
+
+    /* ================================================
+       LAYOUT
+       ================================================ */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+    .container-sm { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* ================================================
+       COMPONENTS: BUTTONS
+       ================================================ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 999px; font-weight: 500; font-size: 0.95rem;
+      transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease, background 0.3s ease, letter-spacing 0.3s ease;
+      white-space: nowrap; position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(var(--primary-rgb), 0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); letter-spacing: 0.02em; }
+    .btn-outline {
+      border: 1px solid var(--border-light);
+      background: var(--surface);
+      color: rgba(255,255,255,0.8);
+      backdrop-filter: blur(8px);
+    }
+    .btn-outline:hover { border-color: rgba(var(--primary-rgb), 0.3); background: rgba(var(--primary-rgb), 0.05); }
+    .btn-lg { padding: 16px 36px; font-size: 1.05rem; }
+
+    /* ★ 新增: 按钮涟漪 */
+    .btn .ripple {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.25);
+      transform: scale(0); pointer-events: none;
+      animation: ripple-expand 0.6s ease-out forwards;
+    }
+    @keyframes ripple-expand {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ================================================
+       COMPONENTS: BADGE
+       ================================================ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 999px; font-size: 0.75rem;
+      border: 1px solid var(--border-light); background: var(--surface);
+      font-family: var(--font-mono); letter-spacing: 0.12em; color: var(--text-muted);
+      /* ★ 新增: badge 发光脉冲 */
+      animation: badge-glow 3s ease-in-out infinite;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse-dot 2s ease infinite; }
+
+    /* ================================================
+       COMPONENTS: GRADIENT BORDER
+       ================================================ */
+    .gradient-border { position: relative; overflow: visible; }
+    .gradient-border::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent), var(--primary), var(--accent));
+      background-size: 400% 400%; animation: grad-flow 5s ease infinite;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+    }
+
+    /* ================================================
+       COMPONENTS: CODE BLOCK
+       ================================================ */
+    .code-block {
+      background: rgba(0,0,0,0.35); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+    }
+    .code-header {
+      display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    }
+    .window-dots { display: flex; gap: 6px; }
+    .window-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .window-dots .d-red { background: rgba(239,68,68,0.8); }
+    .window-dots .d-yellow { background: rgba(234,179,8,0.8); }
+    .window-dots .d-green { background: rgba(34,197,94,0.8); }
+    .code-filename { font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); margin-left: 4px; }
+    .code-body { padding: 20px; font-family: var(--font-mono); font-size: 0.85rem; line-height: 1.8; overflow-x: auto; }
+    .code-body .kw { color: #c084fc; }
+    .code-body .mod { color: #67e8f9; }
+    .code-body .fn { color: var(--yellow); }
+    .code-body .str { color: var(--green); }
+    .code-body .cmt { color: var(--text-dim); }
+
+    /* ================================================
+       COMPONENTS: FEATURE CARD
+       ================================================ */
+    .feature-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 24px; padding: 32px; position: relative; overflow: hidden;
+      transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.4s ease, border-color 0.3s ease;
+      /* ★ 新增: CSS 变量用于极光跟随 */
+      --mx: 50%;
+      --my: 50%;
+    }
+    .feature-card:hover {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 20px 60px rgba(var(--primary-rgb), 0.12);
+      border-color: rgba(var(--primary-rgb), 0.2);
+    }
+    /* ★ 新增: 极光跟随高光 (::before) */
+    .feature-card::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      pointer-events: none; opacity: 0; transition: opacity 0.4s ease; z-index: 1;
+      background: radial-gradient(500px circle at var(--mx) var(--my),
+        rgba(255,255,255,0.07), transparent 40%);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    /* 原有静态渐变 (::after) */
+    .feature-card::after {
+      content: ''; position: absolute; inset: 0; border-radius: inherit;
+      opacity: 0; transition: opacity 0.5s ease; pointer-events: none; z-index: 0;
+    }
+    .feature-card:hover::after { opacity: 1; }
+    .feature-card:nth-child(1)::after { background: radial-gradient(circle at 50% 50%, rgba(139,92,246,0.08) 0%, transparent 70%); }
+    .feature-card:nth-child(2)::after { background: radial-gradient(circle at 50% 50%, rgba(34,211,238,0.08) 0%, transparent 70%); }
+    .feature-card:nth-child(3)::after { background: radial-gradient(circle at 50% 50%, rgba(245,158,11,0.08) 0%, transparent 70%); }
+    .feature-card:nth-child(4)::after { background: radial-gradient(circle at 50% 50%, rgba(16,185,129,0.08) 0%, transparent 70%); }
+
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px; transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
+      position: relative; z-index: 2;
+    }
+    .feature-card:hover .feature-icon { transform: rotate(360deg) scale(1.15); }
+    .feature-card h3 { font-size: 1.15rem; margin-bottom: 10px; font-weight: 700; position: relative; z-index: 2; }
+    .feature-card p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.7; position: relative; z-index: 2; }
+    .feature-link {
+      display: flex; align-items: center; gap: 6px; margin-top: 20px;
+      font-size: 0.85rem; font-weight: 500; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateY(6px); position: relative; z-index: 2;
+    }
+    .feature-card:hover .feature-link { opacity: 1; transform: translateY(0); }
+
+    /* ★ 新增: feature 卡片序号 */
+    .feature-index {
+      position: absolute; top: 20px; right: 24px;
+      font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim);
+      letter-spacing: 0.1em; opacity: 0; transition: opacity 0.4s ease;
+      z-index: 2;
+    }
+    .feature-card:hover .feature-index { opacity: 1; }
+
+    /* ================================================
+       COMPONENTS: TERMINAL
+       ================================================ */
+    .terminal {
+      background: rgba(0,0,0,0.45); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+    }
+    .terminal-bar .window-dots span { width: 9px; height: 9px; }
+    .terminal-title { font-family: var(--font-mono); font-size: 0.65rem; color: var(--text-dim); margin-left: 4px; }
+    .terminal-body { padding: 20px; font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.9; }
+    /* ★ 新增: 终端末尾闪烁光标 */
+    .terminal-cursor {
+      display: inline-block; width: 8px; height: 16px; background: var(--primary);
+      margin-left: 2px; animation: blink 1s step-end infinite; vertical-align: middle;
+    }
+
+    /* ================================================
+       COMPONENTS: TILT CARD WRAPPER
+       ================================================ */
+    .tilt-wrapper {
+      perspective: 1000px;
+    }
+    .tilt-inner {
+      transform-style: preserve-3d;
+      transition: transform 0.15s ease-out;
+      position: relative;
+    }
+    /* ★ 新增: 倾斜镜面高光 */
+    .tilt-inner::after {
+      content: ''; position: absolute; inset: 0; border-radius: 28px;
+      pointer-events: none; opacity: 0; transition: opacity 0.3s ease; z-index: 20;
+      background: radial-gradient(350px circle at var(--spec-x, 50%) var(--spec-y, 50%),
+        rgba(255,255,255,0.09), transparent 50%);
+    }
+    .tilt-inner:hover::after { opacity: 1; }
+
+    /* ★ 新增: 英雄卡片悬浮动画 */
+    .hero-float {
+      animation: hero-float 6s ease-in-out infinite;
+    }
+
+    /* ================================================
+       SECTION: LOADER
+       ================================================ */
+    #loader {
+      position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; background: var(--bg);
+      transition: opacity 0.6s cubic-bezier(.22,1,.36,1), transform 0.6s cubic-bezier(.22,1,.36,1);
+    }
+    #loader.done { opacity: 0; transform: scale(1.06); pointer-events: none; }
+    .loader-spinner {
+      width: 56px; height: 56px; border-radius: 50%; border: 2px solid transparent;
+      border-top-color: var(--primary); border-right-color: var(--accent);
+      animation: spin 1s linear infinite; margin-bottom: 32px;
+    }
+    .loader-text {
+      font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.25em;
+      color: rgba(255,255,255,0.4); margin-bottom: 24px; min-height: 1.2em;
+    }
+    .loader-bar-track {
+      width: 280px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.05); overflow: hidden;
+    }
+    .loader-bar-fill {
+      height: 100%; width: 0%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.08s linear;
+    }
+    .loader-percent {
+      font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.25); margin-top: 12px;
+    }
+
+    /* ================================================
+       SECTION: BACKGROUND
+       ================================================ */
+    #matrix-canvas {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.1;
+    }
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+    .orb-1 {
+      width: 600px; height: 600px; top: -10%; right: -10%;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%);
+      animation: orb-float-1 20s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 500px; height: 500px; bottom: -5%; left: -10%;
+      background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
+      animation: orb-float-2 25s ease-in-out infinite;
+    }
+    .orb-3 {
+      width: 350px; height: 350px; top: 40%; left: 30%;
+      background: radial-gradient(circle, rgba(245,158,11, 0.08) 0%, transparent 70%);
+      animation: orb-float-3 18s ease-in-out infinite;
+    }
+    .bg-radials { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .bg-radials::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at top right, rgba(var(--primary-rgb), 0.12), transparent 50%);
+    }
+    .bg-radials::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at bottom left, rgba(var(--accent-rgb), 0.06), transparent 50%);
+    }
+
+    /* ================================================
+       SECTION: CURSOR GLOW
+       ================================================ */
+    #cursor-glow {
+      position: fixed; width: 400px; height: 400px; border-radius: 50%;
+      pointer-events: none; z-index: 1; will-change: transform;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%);
+      filter: blur(60px); transform: translate(-500px, -500px);
+    }
+    @media (hover: none) { #cursor-glow { display: none; } }
+
+    /* ================================================
+       SECTION: SCROLL PROGRESS
+       ================================================ */
+    #scroll-progress {
+      position: fixed; top: 0; left: 0; height: 3px; z-index: 9998;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.1s linear; width: 0%;
+      /* ★ 新增: 进度条发光 */
+      box-shadow: 0 0 10px rgba(var(--primary-rgb), 0.5), 0 0 20px rgba(var(--accent-rgb), 0.3);
+    }
+
+    /* ================================================
+       SECTION: NAVBAR
+       ================================================ */
+    .navbar {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-80px);
+      z-index: 9990; display: flex; align-items: center; gap: 20px;
+      padding: 12px 24px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(8,8,16,0.75);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      opacity: 0; transition: transform 0.5s cubic-bezier(.22,1,.36,1), opacity 0.5s ease;
+    }
+    .navbar.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .nav-logo { font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: var(--primary); }
+    .nav-divider { width: 1px; height: 14px; background: var(--border-light); }
+    .nav-link {
+      font-size: 0.78rem; color: var(--text-muted); transition: color 0.2s ease;
+      position: relative; padding-bottom: 2px;
+    }
+    .nav-link:hover { color: var(--primary); }
+    /* ★ 新增: 活跃导航高亮 */
+    .nav-link.active { color: var(--primary); }
+    .nav-link.active::after {
+      content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
+      width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+      animation: pulse-dot 2s ease infinite;
+    }
+
+    /* ================================================
+       SECTION: HERO
+       ================================================ */
+    .hero {
+      min-height: 100vh; display: flex; align-items: center;
+      padding: 80px 24px; position: relative; z-index: 2;
+    }
+    .hero-grid {
+      max-width: 1200px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+    }
+    .hero-badge { margin-bottom: 24px; }
+    .hero-title { font-size: clamp(2.5rem, 5vw + 1rem, 4.8rem); margin-bottom: 24px; }
+    /* ★ 新增: 扰码文字样式 */
+    .scramble-text { display: inline-block; min-width: 0.5em; }
+    .hero-desc {
+      font-size: clamp(0.95rem, 1.2vw, 1.1rem); color: var(--text-muted);
+      line-height: 1.8; max-width: 520px; margin-bottom: 32px;
+    }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 16px; }
+    .scroll-hint {
+      display: none; align-items: center; gap: 10px; margin-top: 48px;
+      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim); letter-spacing: 0.1em;
+    }
+    .scroll-hint .arrow-bounce { animation: bounce-down 2s ease-in-out infinite; }
+
+    /* Hero card */
+    .hero-card {
+      background: var(--surface); border-radius: 28px; padding: 32px;
+      position: relative;
+    }
+    .hero-card-meta { display: flex; flex-direction: column; gap: 4px; margin-bottom: 20px; }
+    .hero-card-meta .label { font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+    .hero-card-meta h3 { font-size: 1.4rem; font-weight: 800; }
+    .hero-card-meta p { font-size: 0.85rem; color: var(--text-muted); }
+    .hero-card-tags { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0; }
+    .hero-card-tag {
+      display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+      border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.02);
+      font-size: 0.85rem; color: rgba(255,255,255,0.65); transition: border-color 0.3s ease, transform 0.3s ease;
+    }
+    .hero-card-tag:hover { border-color: rgba(var(--primary-rgb), 0.3); transform: translateY(-2px); }
+
+    /* ================================================
+       SECTION: STATS
+       ================================================ */
+    .stats {
+      padding: 48px 24px; position: relative; z-index: 2;
+    }
+    .stats-grid {
+      max-width: 960px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; text-align: center;
+    }
+    .stat-value {
+      font-family: var(--font-display); font-weight: 800; color: var(--primary);
+      font-size: clamp(2rem, 4vw, 3.2rem); margin-bottom: 6px;
+      transition: color 0.3s ease, text-shadow 0.3s ease;
+    }
+    /* ★ 新增: 计数中高亮 */
+    .stat-value.counting {
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(var(--accent-rgb), 0.4);
+    }
+    .stat-label { font-size: 0.85rem; color: var(--text-muted); }
+
+    /* ================================================
+       SECTION: FEATURES
+       ================================================ */
+    .features {
+      padding: 96px 24px; position: relative; z-index: 2;
+    }
+    .section-header { text-align: center; margin-bottom: 56px; }
+    .section-badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+      border-radius: 999px; border: 1px solid var(--border-light); background: var(--surface);
+      font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.12em; color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .section-header h2 { font-size: clamp(1.75rem, 3vw + 0.5rem, 2.8rem); }
+    .features-grid {
+      max-width: 1200px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+    }
+
+    /* ================================================
+       SECTION: WHY
+       ================================================ */
+    .why {
+      padding: 96px 24px; position: relative; z-index: 2;
+    }
+    .why-card {
+      max-width: 1040px; margin: 0 auto; border-radius: 28px; overflow: hidden;
+      border: 1px solid var(--border-light); background: var(--surface);
+      backdrop-filter: blur(8px); position: relative;
+    }
+    .why-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 30% 50%, rgba(var(--primary-rgb), 0.06), transparent 60%),
+                  radial-gradient(circle at 70% 50%, rgba(var(--accent-rgb), 0.04), transparent 60%);
+    }
+    .why-inner {
+      position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+      padding: 64px;
+    }
+    .why-icon {
+      width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      background: rgba(var(--primary-rgb), 0.1); color: var(--primary); margin-bottom: 24px;
+      transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
+    }
+    .why-icon:hover { transform: rotate(15deg) scale(1.1); }
+    .why-text h2 { font-size: clamp(1.4rem, 2.5vw + 0.4rem, 2.2rem); margin-bottom: 16px; }
+    .why-text > p { color: var(--text-muted); line-height: 1.8; margin-bottom: 32px; font-size: 0.95rem; }
+    .checklist { display: flex; flex-direction: column; gap: 14px; }
+    .check-item {
+      display: flex; align-items: center; gap: 10px; font-size: 0.9rem; color: rgba(255,255,255,0.7);
+      transition: transform 0.3s ease, color 0.3s ease;
+    }
+    .check-item:hover { transform: translateX(6px); color: rgba(255,255,255,0.95); }
+    .check-item .icon { color: #4ade80; }
+
+    /* ================================================
+       SECTION: DOWNLOAD CTA
+       ================================================ */
+    .download-section {
+      padding: 96px 24px; position: relative; z-index: 2;
+    }
+    .download-card {
+      max-width: 720px; margin: 0 auto; text-align: center; padding: 64px 48px;
+      border-radius: 32px; border: 1px solid var(--border-light);
+      background: var(--surface); position: relative; overflow: hidden;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
+    }
+    .download-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 80px rgba(var(--primary-rgb), 0.1);
+    }
+    .download-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.1), transparent 60%);
+    }
+    .download-card > * { position: relative; }
+    .download-card h2 { font-size: clamp(1.5rem, 3vw + 0.5rem, 2.4rem); margin-bottom: 12px; }
+    .download-card > p { color: var(--text-muted); margin-bottom: 32px; font-size: 0.95rem; }
+    /* ★ 新增: 下载图标浮动 */
+    .download-icon-float {
+      animation: icon-float 3s ease-in-out infinite;
+      display: inline-block;
+    }
+    .download-features {
+      display: flex; justify-content: center; flex-wrap: wrap; gap: 24px;
+      margin-top: 28px; font-size: 0.82rem; color: var(--text-dim);
+    }
+    .download-features span {
+      display: flex; align-items: center; gap: 6px;
+      transition: color 0.3s ease, transform 0.3s ease;
+    }
+    .download-features span:hover { color: var(--text); transform: translateY(-2px); }
+    .version-info {
+      display: flex; justify-content: center; gap: 32px; margin-top: 24px;
+      font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-dim);
+    }
+
+    /* ================================================
+       SECTION: FOOTER
+       ================================================ */
+    footer {
+      padding: 64px 24px 40px; position: relative; z-index: 2; text-align: center;
+    }
+    footer .star-icon { color: var(--primary); margin-bottom: 20px; animation: wiggle 3s ease-in-out infinite; display: inline-block; }
+    footer h3 { font-size: clamp(1.2rem, 2vw + 0.3rem, 1.6rem); margin-bottom: 12px; }
+    footer > .container > p { color: rgba(255,255,255,0.35); max-width: 480px; margin: 0 auto 28px; font-size: 0.9rem; }
+    .footer-line {
+      max-width: 640px; margin: 48px auto 0; padding-top: 28px;
+      border-top: 1px solid var(--border); font-family: var(--font-mono);
+      font-size: 0.72rem; color: rgba(255,255,255,0.18);
+    }
+
+    /* ================================================
+       SCROLL REVEAL SYSTEM
+       ================================================ */
+    .js-enabled [data-reveal] {
+      opacity: 0; transform: translateY(32px);
+      transition: opacity 0.7s cubic-bezier(.22,1,.36,1), transform 0.7s cubic-bezier(.22,1,.36,1);
+    }
+    .js-enabled [data-reveal].revealed { opacity: 1; transform: translateY(0); }
+    .js-enabled [data-reveal="right"] { transform: translateX(40px); }
+    .js-enabled [data-reveal="right"].revealed { transform: translateX(0); }
+    .js-enabled [data-reveal="left"] { transform: translateX(-40px); }
+    .js-enabled [data-reveal="left"].revealed { transform: translateX(0); }
+    .js-enabled [data-reveal="scale"] { transform: scale(0.92); }
+    .js-enabled [data-reveal="scale"].revealed { transform: scale(1); }
+
+    /* ★ 新增: feature-card 专用更强入场 */
+    .js-enabled .feature-card[data-reveal] {
+      opacity: 0; transform: translateY(48px) scale(0.94);
+    }
+    .js-enabled .feature-card[data-reveal].revealed {
+      opacity: 1; transform: translateY(0) scale(1);
+    }
+
+    /* ================================================
+       ANIMATIONS
+       ================================================ */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    @keyframes blink { 0%,49% { opacity: 1; } 50%,100% { opacity: 0; } }
+    @keyframes bounce-down { 0%,100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+    @keyframes wiggle { 0%,100% { transform: rotate(0deg); } 25% { transform: rotate(12deg); } 75% { transform: rotate(-12deg); } }
+    @keyframes grad-flow { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+    @keyframes pulse-glow { 0%,100% { box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2); } 50% { box-shadow: 0 0 40px rgba(var(--primary-rgb), 0.5), 0 0 80px rgba(var(--primary-rgb), 0.12); } }
+    @keyframes orb-float-1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(50px,-40px) scale(1.08); } 66% { transform: translate(-30px,30px) scale(0.95); } }
+    @keyframes orb-float-2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-40px,30px) scale(0.92); } 66% { transform: translate(30px,-40px) scale(1.08); } }
+    @keyframes orb-float-3 { 0%,100% { transform: translate(0,0); } 33% { transform: translate(60px,-50px); } 66% { transform: translate(-40px,40px); } }
+
+    /* ★ 新增: 英雄卡片悬浮 */
+    @keyframes hero-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-14px); }
+    }
+    /* ★ 新增: badge 发光 */
+    @keyframes badge-glow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0); }
+      50% { box-shadow: 0 0 18px 2px rgba(var(--primary-rgb), 0.15); }
+    }
+    /* ★ 新增: 下载图标浮动 */
+    @keyframes icon-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    /* ★ 新增: 数字弹入 */
+    @keyframes pop-in {
+      0% { transform: scale(0.5); opacity: 0; }
+      60% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Glitch */
+    .glitch { position: relative; display: inline-block; }
+    .glitch::before, .glitch::after {
+      content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+    .glitch::before { animation: g1 4s infinite; color: var(--accent); clip-path: polygon(0 0, 100% 0, 100% 33%, 0 33%); }
+    .glitch::after { animation: g2 4s infinite; color: var(--primary); clip-path: polygon(0 67%, 100% 67%, 100% 100%, 0 100%); }
+    @keyframes g1 {
+      0%,88%,100% { transform: translate(0); opacity: 0; }
+      89% { transform: translate(-3px,1px); opacity: 0.7; }
+      91% { transform: translate(3px,-1px); opacity: 0.7; }
+      93% { transform: translate(0); opacity: 0; }
+    }
+    @keyframes g2 {
+      0%,90%,100% { transform: translate(0); opacity: 0; }
+      91% { transform: translate(3px,-1px); opacity: 0.7; }
+      93% { transform: translate(-3px,1px); opacity: 0.7; }
+      95% { transform: translate(0); opacity: 0; }
+    }
+
+    /* Shimmer */
+    .shimmer {
+      background: linear-gradient(90deg, var(--text) 0%, var(--primary) 50%, var(--text) 100%);
+      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; animation: shimmer 4s linear infinite;
+    }
+    @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+      .js-enabled [data-reveal] { opacity: 1; transform: none; }
+    }
+
+    /* ================================================
+       RESPONSIVE
+       ================================================ */
+    @media (min-width: 768px) {
+      .scroll-hint { display: flex; }
+    }
+    @media (max-width: 1024px) {
+      .hero-grid { grid-template-columns: 1fr; gap: 48px; }
+      .features-grid { grid-template-columns: repeat(2, 1fr); }
+      .why-inner { grid-template-columns: 1fr; padding: 40px; }
+    }
+    @media (max-width: 640px) {
+      .hero { padding: 60px 16px; }
+      .hero-grid { gap: 36px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+      .hero-card { padding: 24px; }
+      .hero-card-tags { grid-template-columns: 1fr; }
+      .why-inner { padding: 28px; }
+      .download-card { padding: 40px 24px; }
+      .btn { padding: 12px 22px; font-size: 0.88rem; }
+      .version-info { flex-direction: column; gap: 8px; }
+      .navbar { padding: 10px 16px; gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ================================================
+       SVG ICON SPRITE
+       ================================================ -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></symbol>
+    <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+    <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></symbol>
+    <symbol id="i-graduation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  </svg>
+
+  <!-- ================================================
+       LOADER
+       ================================================ -->
+  <div id="loader">
+    <div class="loader-spinner"></div>
+    <p class="loader-text" id="loader-text"></p>
+    <div class="loader-bar-track"><div class="loader-bar-fill" id="loader-bar"></div></div>
+    <p class="loader-percent" id="loader-percent">0%</p>
+  </div>
+
+  <!-- ================================================
+       BACKGROUND LAYERS
+       ================================================ -->
+  <canvas id="matrix-canvas"></canvas>
+  <div class="bg-orbs"><div class="orb orb-1"></div><div class="orb orb-2"></div><div class="orb orb-3"></div></div>
+  <div class="bg-radials"></div>
+  <div id="cursor-glow"></div>
+  <div id="scroll-progress"></div>
+
+  <!-- ================================================
+       NAVBAR
+       ================================================ -->
+  <nav class="navbar" id="navbar">
+    <span class="nav-logo">HNUST</span>
+    <span class="nav-divider"></span>
+    <a href="#hero" class="nav-link active">首页</a>
+    <a href="#features" class="nav-link">功能</a>
+    <a href="#why" class="nav-link">优势</a>
+    <a href="#download" class="nav-link">下载</a>
+  </nav>
+
+  <!-- ================================================
+       MAIN
+       ================================================ -->
+  <main>
+
+    <!-- ===== HERO ===== -->
+    <section class="hero" id="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-badge" data-reveal>
+            <span class="badge">
+              <span class="badge-dot"></span>HELLO I'M HNUST PLATFORM
+            </span>
+          </div>
+
+          <h1 class="hero-title" data-reveal style="transition-delay:0.1s">
+            <!-- ★ data-scramble 用于文字扰码效果 -->
+            <span class="glitch scramble-text" data-text="Python考试" data-scramble="Python考试">Python考试</span><br>
+            <span class="shimmer">仿真平台</span>
+          </h1>
+
+          <p class="hero-desc" data-reveal style="transition-delay:0.2s">
+            湖南科技大学 Python 程序设计考试专属免费练习工具。1:1 完美复刻机房万维考试系统，宿舍也能沉浸式全真模拟。
+          </p>
+
+          <div class="hero-actions" data-reveal style="transition-delay:0.3s">
+            <a href="./download.html" class="btn btn-primary magnetic-btn">
+              <svg class="icon icon-md"><use href="#i-download"/></svg>
+              立即下载最新版
+            </a>
+            <a href="https://github.com/RyanTanC/HNUST-Exam-System" target="_blank" rel="noopener" class="btn btn-outline magnetic-btn">
+              <svg class="icon icon-md"><use href="#i-github"/></svg>
+              GitHub 仓库
+            </a>
+          </div>
+
+          <div class="scroll-hint" data-reveal style="transition-delay:0.5s">
+            <svg class="icon icon-sm arrow-bounce"><use href="#i-arrow-down"/></svg>
+            SCROLL TO EXPLORE
+          </div>
+        </div>
+
+        <div data-reveal="right" style="transition-delay:0.2s">
+          <!-- ★ 新增: 悬浮动画外层 -->
+          <div class="hero-float">
+            <div class="tilt-wrapper">
+              <div class="tilt-inner">
+                <div class="hero-card gradient-border">
+                  <!-- Code preview -->
+                  <div class="code-block" style="margin-bottom:24px">
+                    <div class="code-header">
+                      <div class="window-dots">
+                        <span class="d-red"></span><span class="d-yellow"></span><span class="d-green"></span>
+                      </div>
+                      <span class="code-filename">hnust_exam.py</span>
+                    </div>
+                    <pre class="code-body"><code><span class="kw">import</span> <span class="mod">hnust_exam</span>
+
+<span class="cmt"># 🎯 开始全真模拟</span>
+<span class="kw">def</span> <span class="fn">start_exam</span>():
+    <span class="mod">exam</span> = hnust.<span class="fn">Simulation</span>()
+    exam.<span class="fn">begin</span>()
+    <span class="kw">return</span> <span class="str">"Good luck! 🍀"</span></code></pre>
+                  </div>
+
+                  <p class="hero-card-meta"><span class="label">OFFICIAL DOWNLOAD</span></p>
+                  <h3 style="font-size:1.3rem;margin-bottom:8px">HNUST仿真平台 v1.0.3</h3>
+                  <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:20px">
+                    免费开源 · 无需安装 · 自动更新 · 全题型支持
+                  </p>
+
+                  <div class="hero-card-tags">
+                    <div class="hero-card-tag">
+                      <svg class="icon icon-sm" style="color:var(--primary)"><use href="#i-shield"/></svg>
+                      GPL-3.0
+                    </div>
+                    <div class="hero-card-tag">
+                      <svg class="icon icon-sm" style="color:var(--accent)"><use href="#i-clock"/></svg>
+                      2026-04-26
+                    </div>
+                  </div>
+
+                  <a href="./download.html"
+                     class="btn btn-primary btn-lg" style="width:100%;justify-content:center;animation:pulse-glow 3s ease-in-out infinite;border-radius:16px">
+                    <svg class="icon icon-md"><use href="#i-download"/></svg>
+                    点击下载 EXE 安装包
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STATS ===== -->
+    <section class="stats">
+      <div class="stats-grid">
+        <div data-reveal><div class="stat-value" data-count="1000" data-suffix="+">0</div><div class="stat-label">精选题目</div></div>
+        <div data-reveal style="transition-delay:0.1s"><div class="stat-value" data-count="6" data-suffix=" 种">0</div><div class="stat-label">题目类型</div></div>
+        <div data-reveal style="transition-delay:0.2s"><div class="stat-value" data-count="100" data-suffix="%">0</div><div class="stat-label">免费开源</div></div>
+        <div data-reveal style="transition-delay:0.3s"><div class="stat-value" data-count="24" data-suffix="/7">0</div><div class="stat-label">随时可用</div></div>
+      </div>
+    </section>
+
+    <!-- ===== FEATURES ===== -->
+    <section id="features" class="features">
+      <div class="section-header" data-reveal>
+        <div class="section-badge">
+          <svg class="icon icon-sm" style="color:var(--primary)"><use href="#i-sparkles"/></svg>
+          FEATURES
+        </div>
+        <h2>核心功能亮点</h2>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card" data-reveal style="transition-delay:0s">
+          <span class="feature-index">01</span>
+          <div class="feature-icon" style="background:rgba(139,92,246,0.1);color:var(--primary)">
+            <svg class="icon icon-lg"><use href="#i-layers"/></svg>
+          </div>
+          <h3>全题型覆盖</h3>
+          <p>单选、判断、填空、程序填空、程序改错、程序设计完整支持，1:1贴合校内考试结构。</p>
+          <div class="feature-link" style="color:var(--primary)">了解更多 <span style="display:inline-block;animation:bounce-down 1.5s ease infinite">→</span></div>
+        </div>
+        <div class="feature-card" data-reveal style="transition-delay:0.12s">
+          <span class="feature-index">02</span>
+          <div class="feature-icon" style="background:rgba(34,211,238,0.1);color:var(--accent)">
+            <svg class="icon icon-lg"><use href="#i-monitor"/></svg>
+          </div>
+          <h3>全真模拟</h3>
+          <p>万维考试系统界面、IDLE调用、倒计时交卷、导航栏逻辑完整复刻。</p>
+          <div class="feature-link" style="color:var(--accent)">了解更多 <span style="display:inline-block;animation:bounce-down 1.5s ease infinite">→</span></div>
+        </div>
+        <div class="feature-card" data-reveal style="transition-delay:0.24s">
+          <span class="feature-index">03</span>
+          <div class="feature-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">
+            <svg class="icon icon-lg"><use href="#i-zap"/></svg>
+          </div>
+          <h3>自动判分</h3>
+          <p>即时评分 + 正确答案 + 错题复盘，让备考效率直接翻倍。</p>
+          <div class="feature-link" style="color:#f59e0b">了解更多 <span style="display:inline-block;animation:bounce-down 1.5s ease infinite">→</span></div>
+        </div>
+        <div class="feature-card" data-reveal style="transition-delay:0.36s">
+          <span class="feature-index">04</span>
+          <div class="feature-icon" style="background:rgba(16,185,129,0.1);color:#10b981">
+            <svg class="icon icon-lg"><use href="#i-refresh"/></svg>
+          </div>
+          <h3>持续更新</h3>
+          <p>内置自动更新，题库修复与功能优化自动同步，无需重复下载安装。</p>
+          <div class="feature-link" style="color:#10b981">了解更多 <span style="display:inline-block;animation:bounce-down 1.5s ease infinite">→</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== WHY ===== -->
+    <section id="why" class="why">
+      <div class="why-card" data-reveal="scale">
+        <div class="why-inner">
+          <div>
+            <div class="why-icon">
+              <svg class="icon icon-lg"><use href="#i-graduation"/></svg>
+            </div>
+            <h2>为什么选择 HNUST 仿真平台？</h2>
+            <p>提前熟悉考试节奏，杜绝操作失误丢分。完美复刻真实考试环境，让每一次练习都精准对应期末考试，备考效率直接翻倍。</p>
+            <div class="checklist">
+              <div class="check-item"><svg class="icon icon-sm"><use href="#i-check-circle"/></svg> 完整复刻万维考试系统界面</div>
+              <div class="check-item"><svg class="icon icon-sm"><use href="#i-check-circle"/></svg> 支持全部 6 种题型练习</div>
+              <div class="check-item"><svg class="icon icon-sm"><use href="#i-check-circle"/></svg> 自动评分与错题分析</div>
+              <div class="check-item"><svg class="icon icon-sm"><use href="#i-check-circle"/></svg> 持续更新无需手动操作</div>
+            </div>
+          </div>
+          <div>
+            <div class="terminal">
+              <div class="terminal-bar">
+                <div class="window-dots">
+                  <span class="d-red"></span><span class="d-yellow"></span><span class="d-green"></span>
+                </div>
+                <span class="terminal-title">IDLE — Python 3.x</span>
+              </div>
+              <div class="terminal-body" id="terminal-typewriter">
+                <div class="tw-line" data-text=">>> from hnust_exam import Simulation" data-delay="500"></div>
+                <div class="tw-line" data-text=">>> sim = Simulation()" data-delay="1200"></div>
+                <div class="tw-line" data-text=">>> sim.start()" data-delay="1800"></div>
+                <div class="tw-line" data-text="[✓] 加载题库完成 (1000+ 题)" data-delay="2400" data-color="#86efac"></div>
+                <div class="tw-line" data-text="[✓] 全真界面已加载" data-delay="3000" data-color="#86efac"></div>
+                <div class="tw-line" data-text="[✓] 倒计时已启动: 120:00" data-delay="3600" data-color="#86efac"></div>
+                <div class="tw-line" data-text='>>> print("祝你考试顺利！🎯")' data-delay="4200"></div>
+                <div class="tw-line" data-text="祝你考试顺利！🎯" data-delay="4800" data-color="#fde047"></div>
+                <!-- ★ 新增: 末尾闪烁光标 -->
+                <div class="tw-line" data-delay="5400" data-cursor="true"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== DOWNLOAD CTA ===== -->
+    <section id="download" class="download-section">
+      <div class="download-card" data-reveal="scale">
+        <div class="download-icon-float">
+          <svg class="icon" style="width:48px;height:48px;color:var(--primary);margin-bottom:20px"><use href="#i-code"/></svg>
+        </div>
+        <h2>准备好征服 Python 考试了吗？</h2>
+        <p>下载 HNUST 仿真平台，开始你的全真模拟练习</p>
+        <a href="./download.html"
+           class="btn btn-primary btn-lg magnetic-btn" style="animation:pulse-glow 3s ease-in-out infinite">
+          <svg class="icon icon-md"><use href="#i-download"/></svg>
+          下载 HNUST 仿真平台 v1.0.3
+        </a>
+        <div class="download-features">
+          <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 完全免费</span>
+          <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 自动更新</span>
+          <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 全题型支持</span>
+          <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 开源 GPL-3.0</span>
+        </div>
+        <div class="version-info">
+          <span>v1.0.3 · 2026-04-26</span>
+          <span>Windows EXE</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================================================
+       FOOTER
+       ================================================ -->
+  <footer>
+    <div class="container">
+      <div class="star-icon">
+        <svg class="icon" style="width:40px;height:40px"><use href="#i-star"/></svg>
+      </div>
+      <h3>Made with ❤️ by RyanTanC</h3>
+      <p>专为 HNUSTer 打造的 Python 期末备考神器。完全免费开源，谨防盗版付费售卖版本。</p>
+      <a href="https://github.com/RyanTanC/HNUST-Exam-System" target="_blank" rel="noopener"
+         class="btn btn-outline magnetic-btn" style="font-size:0.85rem;padding:10px 22px">
+        <svg class="icon icon-sm"><use href="#i-github"/></svg>
+        Star on GitHub
+      </a>
+      <div class="footer-line">
+        © 2026 HNUST Python Exam Platform · GPL-3.0 License · Made with AI-Assisted Development
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================================================
+       JAVASCRIPT — Zero dependencies, vanilla only
+       ================================================ -->
+  <script>
+  (function() {
+    'use strict';
+
+    document.documentElement.classList.add('js-enabled');
+
+    // ===================== CONFIG =====================
+    var MATRIX_CHARS = '01def()=+-><TrueNoneHNUSTprintclassimportreturnwhile>>>if==';
+    var LOADER_DURATION = 2500;
+    var COUNTER_DURATION = 2000;
+    var TYPEWRITER_SPEED = 28;
+    var PREFERS_REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ===================== STATE =====================
+    var mouseX = -500, mouseY = -500;
+    var smoothX = -500, smoothY = -500;
+    var isHoverDevice = window.matchMedia('(hover: hover)').matches;
+
+    // ===================== UTILS =====================
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function easeOutExpo(t) { return t === 1 ? 1 : 1 - Math.pow(2, -10 * t); }
+    function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(str));
+      return div.innerHTML;
+    }
+
+    // ★ 新增: 数字格式化 (1000 -> 1,000)
+    function formatNumber(n) {
+      return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    // ===================== MATRIX RAIN (Canvas) =====================
+    function initMatrixRain() {
+      var canvas = document.getElementById('matrix-canvas');
+      if (!canvas) return;
+      var ctx = canvas.getContext('2d');
+      var fontSize = 14;
+      var columns, drops;
+
+      function resize() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        columns = Math.floor(canvas.width / (fontSize * 2.5));
+        drops = [];
+        for (var i = 0; i < columns; i++) {
+          drops.push(Math.random() * -80);
+        }
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function draw() {
+        ctx.fillStyle = 'rgba(8, 8, 16, 0.06)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = fontSize + 'px JetBrains Mono, monospace';
+
+        var spacing = Math.floor(canvas.width / columns);
+
+        for (var i = 0; i < columns; i++) {
+          var charIdx = Math.floor(Math.random() * MATRIX_CHARS.length);
+          var len = 1 + Math.floor(Math.random() * 3);
+          var text = MATRIX_CHARS.substr(charIdx, len);
+          var x = i * spacing + Math.random() * 10;
+          var y = drops[i] * fontSize;
+
+          var alpha = 0.15 + Math.random() * 0.35;
+          ctx.fillStyle = 'rgba(139, 92, 246, ' + alpha + ')';
+          ctx.fillText(text, x, y);
+
+          if (y > canvas.height && Math.random() > 0.975) {
+            drops[i] = 0;
+          }
+          drops[i] += 0.5 + Math.random() * 0.5;
+        }
+      }
+
+      setInterval(draw, 75);
+    }
+
+    // ===================== CURSOR GLOW =====================
+    function initCursorGlow() {
+      if (!isHoverDevice) return;
+      var el = document.getElementById('cursor-glow');
+      if (!el) return;
+
+      document.addEventListener('mousemove', function(e) {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+
+      function tick() {
+        smoothX = lerp(smoothX, mouseX, 0.07);
+        smoothY = lerp(smoothY, mouseY, 0.07);
+        el.style.transform = 'translate(' + (smoothX - 200) + 'px, ' + (smoothY - 200) + 'px)';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    // ===================== SCROLL PROGRESS =====================
+    function initScrollProgress() {
+      var el = document.getElementById('scroll-progress');
+      if (!el) return;
+
+      function update() {
+        var max = document.documentElement.scrollHeight - window.innerHeight;
+        var p = max > 0 ? window.scrollY / max : 0;
+        el.style.width = (p * 100) + '%';
+      }
+      window.addEventListener('scroll', update, { passive: true });
+      update();
+    }
+
+    // ===================== NAVBAR + ACTIVE TRACKING =====================
+    function initNavbar() {
+      var nav = document.getElementById('navbar');
+      if (!nav) return;
+
+      function update() {
+        if (window.scrollY > 350) {
+          nav.classList.add('visible');
+        } else {
+          nav.classList.remove('visible');
+        }
+      }
+      window.addEventListener('scroll', update, { passive: true });
+      update();
+    }
+
+    // ★ 新增: 活跃导航链接追踪
+    function initActiveNavTracking() {
+      var sections = document.querySelectorAll('section[id]');
+      var navLinks = document.querySelectorAll('.nav-link');
+      if (!sections.length || !navLinks.length) return;
+
+      function update() {
+        var scrollY = window.scrollY + 200;
+        var current = '';
+        sections.forEach(function(section) {
+          if (scrollY >= section.offsetTop) {
+            current = section.id;
+          }
+        });
+        navLinks.forEach(function(link) {
+          var href = link.getAttribute('href');
+          if (href === '#' + current) {
+            link.classList.add('active');
+          } else {
+            link.classList.remove('active');
+          }
+        });
+      }
+      window.addEventListener('scroll', update, { passive: true });
+      update();
+    }
+
+    // ===================== SCROLL REVEAL =====================
+    function initScrollReveal() {
+      var els = document.querySelectorAll('[data-reveal]');
+      if (!els.length) return;
+
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+      els.forEach(function(el) { observer.observe(el); });
+    }
+
+    // ===================== ANIMATED COUNTERS =====================
+    function initCounters() {
+      var els = document.querySelectorAll('[data-count]');
+      if (!els.length) return;
+
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+          var el = entry.target;
+          var target = parseInt(el.getAttribute('data-count'), 10);
+          var suffix = el.getAttribute('data-suffix') || '';
+          var start = performance.now();
+
+          // ★ 新增: 计数中高亮
+          el.classList.add('counting');
+
+          function tick(now) {
+            var elapsed = now - start;
+            var progress = Math.min(elapsed / COUNTER_DURATION, 1);
+            var eased = easeOutExpo(progress);
+            var current = Math.floor(eased * target);
+            el.textContent = formatNumber(current) + suffix;
+            if (progress < 1) {
+              requestAnimationFrame(tick);
+            } else {
+              el.textContent = formatNumber(target) + suffix;
+              el.classList.remove('counting');
+            }
+          }
+          requestAnimationFrame(tick);
+          observer.unobserve(el);
+        });
+      }, { threshold: 0.5 });
+
+      els.forEach(function(el) { observer.observe(el); });
+    }
+
+    // ===================== TYPEWRITER =====================
+    function initTypewriter() {
+      var container = document.getElementById('terminal-typewriter');
+      if (!container) return;
+
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (!entry.isIntersecting) return;
+
+          var lines = entry.target.querySelectorAll('.tw-line');
+          lines.forEach(function(line) {
+            var text = line.getAttribute('data-text') || '';
+            var delay = parseInt(line.getAttribute('data-delay') || '0', 10);
+            var color = line.getAttribute('data-color') || '';
+            var hasCursor = line.getAttribute('data-cursor') === 'true';
+
+            if (hasCursor) {
+              // ★ 新增: 末尾闪烁光标行
+              setTimeout(function() {
+                line.innerHTML = '<span class="terminal-cursor"></span>';
+              }, delay);
+              return;
+            }
+
+            setTimeout(function() {
+              var i = 0;
+              var interval = setInterval(function() {
+                if (i <= text.length) {
+                  var displayed = text.slice(0, i);
+                  if (i < text.length) {
+                    line.innerHTML = escapeHtml(displayed) + '<span style="animation:blink 1s step-end infinite;color:var(--primary)">|</span>';
+                  } else {
+                    line.textContent = text;
+                    if (color) line.style.color = color;
+                  }
+                  i++;
+                } else {
+                  clearInterval(interval);
+                }
+              }, TYPEWRITER_SPEED);
+            }, delay);
+          });
+
+          observer.unobserve(entry.target);
+        });
+      }, { threshold: 0.3 });
+
+      observer.observe(container);
+    }
+
+    // ===================== 3D TILT CARD + SPECULAR =====================
+    function initTiltCard() {
+      if (!isHoverDevice) return;
+      var wrapper = document.querySelector('.tilt-wrapper');
+      var inner = document.querySelector('.tilt-inner');
+      if (!wrapper || !inner) return;
+
+      wrapper.addEventListener('mousemove', function(e) {
+        var rect = wrapper.getBoundingClientRect();
+        var nx = (e.clientX - rect.left) / rect.width;
+        var ny = (e.clientY - rect.top) / rect.height;
+        var rx = (ny - 0.5) * -10;
+        var ry = (nx - 0.5) * 10;
+        inner.style.transform = 'rotateX(' + rx + 'deg) rotateY(' + ry + 'deg)';
+        // ★ 新增: 设置镜面高光位置
+        inner.style.setProperty('--spec-x', (nx * 100) + '%');
+        inner.style.setProperty('--spec-y', (ny * 100) + '%');
+      });
+
+      wrapper.addEventListener('mouseleave', function() {
+        inner.style.transform = 'rotateX(0deg) rotateY(0deg)';
+      });
+    }
+
+    // ===================== MAGNETIC BUTTONS =====================
+    function initMagneticButtons() {
+      if (!isHoverDevice) return;
+      var btns = document.querySelectorAll('.magnetic-btn');
+
+      btns.forEach(function(btn) {
+        btn.addEventListener('mousemove', function(e) {
+          var rect = btn.getBoundingClientRect();
+          var dx = (e.clientX - rect.left - rect.width / 2) * 0.2;
+          var dy = (e.clientY - rect.top - rect.height / 2) * 0.2;
+          btn.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(1.05)';
+        });
+
+        btn.addEventListener('mouseleave', function() {
+          // ★ 增强: 弹簧回弹效果
+          btn.style.transition = 'transform 0.5s cubic-bezier(.175,.885,.32,1.275)';
+          btn.style.transform = '';
+          setTimeout(function() {
+            btn.style.transition = '';
+          }, 500);
+        });
+      });
+    }
+
+    // ★ 新增: 按钮涟漪效果
+    function initButtonRipple() {
+      document.querySelectorAll('.btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          var rect = btn.getBoundingClientRect();
+          var size = Math.max(rect.width, rect.height) * 2;
+          var ripple = document.createElement('span');
+          ripple.className = 'ripple';
+          ripple.style.width = ripple.style.height = size + 'px';
+          ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
+          ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
+          btn.appendChild(ripple);
+          setTimeout(function() { ripple.remove(); }, 600);
+        });
+      });
+    }
+
+    // ★ 新增: 极光跟随高光 (Feature Cards)
+    function initAuroraSpotlight() {
+      if (!isHoverDevice) return;
+      var cards = document.querySelectorAll('.feature-card');
+
+      cards.forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+          var rect = card.getBoundingClientRect();
+          card.style.setProperty('--mx', (e.clientX - rect.left) + 'px');
+          card.style.setProperty('--my', (e.clientY - rect.top) + 'px');
+        });
+        card.addEventListener('mouseleave', function() {
+          card.style.setProperty('--mx', '50%');
+          card.style.setProperty('--my', '50%');
+        });
+      });
+    }
+
+    // ★ 新增: 背景光球视差
+    function initParallaxOrbs() {
+      if (PREFERS_REDUCED) return;
+      var orbs = document.querySelectorAll('.orb');
+      if (!orbs.length) return;
+
+      var ticking = false;
+      window.addEventListener('scroll', function() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function() {
+          var scrollY = window.scrollY;
+          orbs.forEach(function(orb, i) {
+            var speed = (i + 1) * 0.015;
+            var y = scrollY * speed;
+            // 叠加到已有的 float 动画上，通过 margin 实现
+            orb.style.marginTop = y + 'px';
+          });
+          ticking = false;
+        });
+      }, { passive: true });
+    }
+
+    // ★ 新增: 文字扰码效果
+    function initTextScramble() {
+      if (PREFERS_REDUCED) return;
+      var els = document.querySelectorAll('[data-scramble]');
+      if (!els.length) return;
+
+      var SCRAMBLE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?';
+
+      els.forEach(function(el) {
+        var finalText = el.getAttribute('data-scramble');
+        var duration = 1200;
+        var totalSteps = Math.ceil(duration / 35);
+        var step = 0;
+
+        // 延迟启动，等 loader 结束
+        setTimeout(function() {
+          var interval = setInterval(function() {
+            var progress = step / totalSteps;
+            var result = '';
+            for (var i = 0; i < finalText.length; i++) {
+              var charProgress = i / finalText.length;
+              if (charProgress < progress - 0.08) {
+                result += finalText[i];
+              } else if (charProgress < progress + 0.08) {
+                result += Math.random() > 0.4 ? finalText[i] : SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+              } else {
+                result += SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
+              }
+            }
+            // 保留 glitch 的 data-text 属性
+            el.textContent = result;
+            step++;
+            if (step > totalSteps) {
+              clearInterval(interval);
+              el.textContent = finalText;
+            }
+          }, 35);
+        }, 2800); // loader 结束后开始
+      });
+    }
+
+    // ★ 新增: Feature Card 悬停时的 3D 微倾斜
+    function initFeatureCardTilt() {
+      if (!isHoverDevice) return;
+      document.querySelectorAll('.feature-card').forEach(function(card) {
+        card.addEventListener('mousemove', function(e) {
+          var rect = card.getBoundingClientRect();
+          var nx = (e.clientX - rect.left) / rect.width - 0.5;
+          var ny = (e.clientY - rect.top) / rect.height - 0.5;
+          card.style.transform = 'translateY(-8px) scale(1.02) perspective(800px) rotateX(' + (-ny * 5) + 'deg) rotateY(' + (nx * 5) + 'deg)';
+        });
+        card.addEventListener('mouseleave', function() {
+          card.style.transform = '';
+        });
+      });
+    }
+
+    // ===================== SMOOTH ANCHOR SCROLL =====================
+    function initSmoothScroll() {
+      document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+        a.addEventListener('click', function(e) {
+          var target = document.querySelector(a.getAttribute('href'));
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    }
+
+    // ===================== LOADER =====================
+    function initLoader(callback) {
+      var loader = document.getElementById('loader');
+      var barEl = document.getElementById('loader-bar');
+      var textEl = document.getElementById('loader-text');
+      var pctEl = document.getElementById('loader-percent');
+      if (!loader || !barEl || !textEl || !pctEl) { callback(); return; }
+
+      var fullText = 'HNUST PYTHON EXAM SYSTEM';
+      var progress = 0;
+      var textIdx = 0;
+
+      var typeInterval = setInterval(function() {
+        if (textIdx <= fullText.length) {
+          textEl.innerHTML = fullText.slice(0, textIdx) + '<span style="animation:blink 1s step-end infinite">_</span>';
+          textIdx++;
+        } else {
+          clearInterval(typeInterval);
+        }
+      }, 65);
+
+      var progressInterval = setInterval(function() {
+        progress += Math.floor(Math.random() * 6) + 1;
+        if (progress >= 100) {
+          progress = 100;
+          clearInterval(progressInterval);
+          clearInterval(typeInterval);
+          textEl.textContent = fullText;
+
+          setTimeout(function() {
+            loader.classList.add('done');
+            setTimeout(function() {
+              loader.style.display = 'none';
+              callback();
+            }, 650);
+          }, 400);
+        }
+        var eased = easeOutExpo(progress / 100);
+        barEl.style.width = (eased * 100) + '%';
+        pctEl.textContent = Math.floor(progress) + '%';
+      }, 55);
+    }
+
+    // ===================== INIT =====================
+    function init() {
+      initLoader(function() {
+        initScrollReveal();
+        initCounters();
+        initTypewriter();
+        initTextScramble();
+      });
+
+      // 以下在 DOMContentLoaded 时即可运行，无需等 loader
+      initMatrixRain();
+      initCursorGlow();
+      initScrollProgress();
+      initNavbar();
+      initActiveNavTracking();
+      initTiltCard();
+      initMagneticButtons();
+      initButtonRipple();
+      initAuroraSpotlight();
+      initParallaxOrbs();
+      initFeatureCardTilt();
+      initSmoothScroll();
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+  })();
+  </script>
+</body>
+</html>

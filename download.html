@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HNUST Python 考试仿真平台 — 下载最新版本">
+  <meta name="theme-color" content="#080810">
+  <title>下载 — HNUST Python 考试仿真平台</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================================================
+       CUSTOM PROPERTIES
+       ================================================ */
+    :root {
+      --bg: #080810;
+      --surface: rgba(255,255,255,0.03);
+      --border: rgba(255,255,255,0.06);
+      --border-light: rgba(255,255,255,0.1);
+      --primary: #8b5cf6;
+      --primary-rgb: 139,92,246;
+      --accent: #22d3ee;
+      --accent-rgb: 34,211,238;
+      --text: #f0ece4;
+      --text-muted: rgba(240,236,228,0.55);
+      --text-dim: rgba(240,236,228,0.25);
+      --green: #86efac;
+      --yellow: #fde047;
+      --red: #f87171;
+      --font-display: 'Syne', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-body: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    /* RESET */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    body {
+      background: var(--bg); color: var(--text); font-family: var(--font-body);
+      overflow-x: hidden; line-height: 1.6;
+      font-synthesis: none; text-rendering: optimizeLegibility;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { border: none; background: none; font: inherit; color: inherit; cursor: pointer; }
+    img { max-width: 100%; display: block; }
+
+    /* Noise overlay */
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+    /* Background */
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+    .orb-1 {
+      width: 600px; height: 600px; top: -10%; right: -10%;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%);
+      animation: orb-float-1 20s ease-in-out infinite;
+    }
+    .orb-2 {
+      width: 500px; height: 500px; bottom: -5%; left: -10%;
+      background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
+      animation: orb-float-2 25s ease-in-out infinite;
+    }
+
+    /* LAYOUT */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* COMPONENTS: BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 999px; font-weight: 500; font-size: 0.95rem;
+      transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease, background 0.3s ease, letter-spacing 0.3s ease;
+      white-space: nowrap; position: relative; overflow: hidden;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff;
+      box-shadow: 0 4px 24px rgba(var(--primary-rgb), 0.3);
+    }
+    .btn-primary:hover { box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); letter-spacing: 0.02em; }
+    .btn-outline {
+      border: 1px solid var(--border-light);
+      background: var(--surface);
+      color: rgba(255,255,255,0.8);
+      backdrop-filter: blur(8px);
+    }
+    .btn-outline:hover { border-color: rgba(var(--primary-rgb), 0.3); background: rgba(var(--primary-rgb), 0.05); }
+    .btn-lg { padding: 16px 36px; font-size: 1.05rem; }
+
+    /* Back link */
+    .back-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font-mono); font-size: 0.82rem;
+      color: var(--text-muted); transition: color 0.3s ease, transform 0.3s ease;
+      padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .back-link:hover { color: var(--primary); transform: translateX(-4px); border-color: rgba(var(--primary-rgb), 0.3); }
+
+    /* Icon helpers */
+    .icon { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+    .icon-sm { width: 16px; height: 16px; }
+    .icon-md { width: 20px; height: 20px; }
+
+    /* ================================================
+       PAGE LAYOUT
+       ================================================ */
+    .page-wrapper {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 60px 24px 80px; position: relative; z-index: 2;
+    }
+
+    /* ================================================
+       DOWNLOAD CARD
+       ================================================ */
+    .dl-card {
+      max-width: 620px; width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 28px; padding: 48px 40px;
+      position: relative; overflow: hidden;
+      backdrop-filter: blur(12px);
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) both;
+    }
+    .dl-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.1), transparent 60%);
+    }
+    .dl-card > * { position: relative; z-index: 1; }
+
+    .dl-header { text-align: center; margin-bottom: 32px; }
+    .dl-header h1 {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(1.5rem, 3vw + 0.5rem, 2.2rem);
+      margin-bottom: 8px;
+    }
+    .dl-header p { color: var(--text-muted); font-size: 0.95rem; }
+
+    /* Version info grid */
+    .dl-info {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-bottom: 32px;
+    }
+    .dl-info-item {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 20px;
+      text-align: center;
+      transition: border-color 0.3s ease, transform 0.3s ease;
+    }
+    .dl-info-item:hover { border-color: rgba(var(--primary-rgb), 0.3); transform: translateY(-2px); }
+    .dl-info-label {
+      font-family: var(--font-mono); font-size: 0.65rem;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-dim); margin-bottom: 8px;
+    }
+    .dl-info-value {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.25rem;
+    }
+    .dl-info-value.version { color: var(--primary); }
+    .dl-info-value.date { color: var(--accent); }
+
+    /* Loading / error states */
+    .dl-loading {
+      text-align: center; padding: 32px 0;
+      font-family: var(--font-mono); font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .dl-loading .spinner {
+      display: inline-block; width: 28px; height: 28px;
+      border: 2px solid transparent;
+      border-top-color: var(--primary); border-right-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+      margin-bottom: 12px;
+    }
+    .dl-error {
+      text-align: center; padding: 16px;
+      background: rgba(248,113,113,0.08);
+      border: 1px solid rgba(248,113,113,0.2);
+      border-radius: 12px; margin-bottom: 24px;
+      font-size: 0.85rem; color: var(--red);
+    }
+
+    /* Download button */
+    .dl-btn-wrap { text-align: center; }
+    .dl-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 18px 32px; border-radius: 16px;
+      font-weight: 600; font-size: 1.05rem;
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff; border: none; cursor: pointer;
+      box-shadow: 0 4px 24px rgba(var(--primary-rgb), 0.3);
+      transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease;
+      animation: pulse-glow 3s ease-in-out infinite;
+      font-family: var(--font-body);
+    }
+    .dl-btn:hover { transform: scale(1.03); box-shadow: 0 8px 40px rgba(var(--primary-rgb), 0.5); }
+    .dl-btn:active { transform: scale(0.97); }
+    .dl-btn.disabled {
+      opacity: 0.5; cursor: not-allowed; animation: none;
+      pointer-events: none;
+    }
+
+    .dl-note {
+      text-align: center; margin-top: 16px;
+      font-size: 0.78rem; color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* ================================================
+       GALLERY SECTION
+       ================================================ */
+    .gallery {
+      max-width: 620px; width: 100%; margin-top: 48px;
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) 0.15s both;
+    }
+    .gallery-title {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.15rem; margin-bottom: 20px; text-align: center;
+    }
+    .gallery-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    }
+    .gallery-item {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      transition: transform 0.3s ease, border-color 0.3s ease;
+    }
+    .gallery-item:hover { transform: translateY(-4px); border-color: rgba(var(--primary-rgb), 0.3); }
+    .gallery-img {
+      width: 100%; aspect-ratio: 16/10; object-fit: cover;
+      background: rgba(255,255,255,0.03);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: var(--text-dim);
+    }
+    .gallery-img-placeholder {
+      width: 100%; aspect-ratio: 16/10;
+      background: linear-gradient(135deg, rgba(var(--primary-rgb), 0.08), rgba(var(--accent-rgb), 0.05));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem; color: var(--text-dim);
+      font-family: var(--font-mono); text-align: center; padding: 8px;
+    }
+    .gallery-caption {
+      padding: 12px; font-size: 0.8rem; color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ================================================
+       FOOTER
+       ================================================ */
+    .dl-footer {
+      max-width: 620px; width: 100%; text-align: center;
+      margin-top: 48px; padding-top: 32px;
+      border-top: 1px solid var(--border);
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) 0.3s both;
+    }
+    .dl-footer p {
+      font-family: var(--font-mono); font-size: 0.72rem;
+      color: rgba(255,255,255,0.18);
+    }
+
+    /* ================================================
+       ANIMATIONS
+       ================================================ */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes orb-float-1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(50px,-40px) scale(1.08); } 66% { transform: translate(-30px,30px) scale(0.95); } }
+    @keyframes orb-float-2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-40px,30px) scale(0.92); } 66% { transform: translate(30px,-40px) scale(1.08); } }
+    @keyframes pulse-glow {
+      0%,100% { box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.2); }
+      50% { box-shadow: 0 0 40px rgba(var(--primary-rgb), 0.5), 0 0 80px rgba(var(--primary-rgb), 0.12); }
+    }
+    @keyframes card-enter {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* ================================================
+       RESPONSIVE
+       ================================================ */
+    @media (max-width: 640px) {
+      .page-wrapper { padding: 40px 16px 60px; }
+      .dl-card { padding: 32px 20px; }
+      .dl-info { grid-template-columns: 1fr; gap: 12px; }
+      .gallery-grid { grid-template-columns: 1fr; }
+      .btn-lg { padding: 14px 24px; font-size: 0.95rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SVG Icons (subset) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+  </svg>
+
+  <!-- Background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+  </div>
+
+  <div class="page-wrapper">
+
+    <!-- Back link -->
+    <a href="./index.html" class="back-link" style="margin-bottom:40px">
+      <svg class="icon icon-sm"><use href="#i-arrow-left"/></svg>
+      返回首页
+    </a>
+
+    <!-- Download Card -->
+    <div class="dl-card">
+      <div class="dl-header">
+        <h1>下载 HNUST 仿真平台</h1>
+        <p>湖南科技大学 Python 程序设计考试仿真工具</p>
+      </div>
+
+      <!-- Loading state (shown while API fetches) -->
+      <div id="dl-loading" class="dl-loading">
+        <div class="spinner"></div>
+        <p>正在获取最新版本信息…</p>
+      </div>
+
+      <!-- Error state (hidden by default) -->
+      <div id="dl-error" class="dl-error" style="display:none"></div>
+
+      <!-- Content (hidden until API resolves) -->
+      <div id="dl-content" style="display:none">
+        <div class="dl-info">
+          <div class="dl-info-item">
+            <div class="dl-info-label">
+              <svg class="icon icon-sm" style="vertical-align:-2px;margin-right:4px;color:var(--primary)"><use href="#i-tag"/></svg>
+              最新版本
+            </div>
+            <div class="dl-info-value version" id="dl-version">—</div>
+          </div>
+          <div class="dl-info-item">
+            <div class="dl-info-label">
+              <svg class="icon icon-sm" style="vertical-align:-2px;margin-right:4px;color:var(--accent)"><use href="#i-calendar"/></svg>
+              发布日期
+            </div>
+            <div class="dl-info-value date" id="dl-date">—</div>
+          </div>
+        </div>
+
+        <div class="dl-btn-wrap">
+          <a id="dl-btn" href="#" class="dl-btn" target="_blank" rel="noopener">
+            <svg class="icon icon-md"><use href="#i-download"/></svg>
+            立即下载 EXE 安装包
+          </a>
+        </div>
+        <p class="dl-note" id="dl-note">Windows 系统 · 免费开源 · 自动更新</p>
+      </div>
+    </div>
+
+    <!-- Gallery -->
+    <div class="gallery">
+      <h2 class="gallery-title">📖 问题教程</h2>
+      <div class="gallery-grid">
+        <div class="gallery-item">
+          <div class="gallery-img-placeholder">📷<br>安装步骤<br><small style="opacity:0.5">图片待添加</small></div>
+          <div class="gallery-caption">图1：安装步骤</div>
+        </div>
+        <div class="gallery-item">
+          <div class="gallery-img-placeholder">📷<br>环境配置<br><small style="opacity:0.5">图片待添加</small></div>
+          <div class="gallery-caption">图2：环境配置</div>
+        </div>
+        <div class="gallery-item">
+          <div class="gallery-img-placeholder">📷<br>考试界面<br><small style="opacity:0.5">图片待添加</small></div>
+          <div class="gallery-caption">图3：考试界面</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="dl-footer">
+      <p>© 2026 HNUST Python Exam Platform · GPL-3.0 License</p>
+    </div>
+
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+
+    var API_URL = 'https://api.github.com/repos/RyanTanC/HNUST-Exam-System/releases/latest';
+    var FALLBACK_URL = 'https://github.com/RyanTanC/HNUST-Exam-System/releases/latest';
+
+    var loadingEl = document.getElementById('dl-loading');
+    var errorEl   = document.getElementById('dl-error');
+    var contentEl = document.getElementById('dl-content');
+    var versionEl = document.getElementById('dl-version');
+    var dateEl    = document.getElementById('dl-date');
+    var btnEl     = document.getElementById('dl-btn');
+    var noteEl    = document.getElementById('dl-note');
+
+    function formatDate(iso) {
+      if (!iso) return '—';
+      return iso.split('T')[0];
+    }
+
+    function showError(msg) {
+      loadingEl.style.display = 'none';
+      errorEl.style.display = 'block';
+      errorEl.textContent = msg || '无法获取版本信息，请稍后重试。';
+      // Show fallback button
+      contentEl.style.display = 'block';
+      btnEl.href = FALLBACK_URL;
+      btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 前往 GitHub Releases 下载';
+      noteEl.textContent = '将跳转到 GitHub Releases 页面';
+      versionEl.textContent = '—';
+      dateEl.textContent = '—';
+    }
+
+    function fetchRelease() {
+      fetch(API_URL, {
+        headers: { 'Accept': 'application/vnd.github.v3+json' }
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+      })
+      .then(function(data) {
+        var tag = data.tag_name || '—';
+        var date = formatDate(data.published_at);
+        var assets = data.assets || [];
+
+        // Find .exe asset
+        var exeAsset = null;
+        for (var i = 0; i < assets.length; i++) {
+          if (assets[i].name && assets[i].name.toLowerCase().endsWith('.exe')) {
+            exeAsset = assets[i];
+            break;
+          }
+        }
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+        versionEl.textContent = tag;
+        dateEl.textContent = date;
+
+        if (exeAsset && exeAsset.browser_download_url) {
+          btnEl.href = exeAsset.browser_download_url;
+          btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 立即下载 ' + exeAsset.name;
+          noteEl.textContent = exeAsset.name + ' · ' + formatSize(exeAsset.size) + ' · 免费开源';
+        } else {
+          // No .exe found, fallback to releases page
+          btnEl.href = FALLBACK_URL;
+          btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 前往 GitHub Releases 下载';
+          noteEl.textContent = '未找到 .exe 文件，请在 Releases 页面选择对应版本';
+        }
+      })
+      .catch(function(err) {
+        showError('获取版本信息失败: ' + (err.message || '网络错误'));
+      });
+    }
+
+    function formatSize(bytes) {
+      if (!bytes || isNaN(bytes)) return '';
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+
+    // Start fetching on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', fetchRelease);
+    } else {
+      fetchRelease();
+    }
+  })();
+  </script>
+</body>
+</html>
