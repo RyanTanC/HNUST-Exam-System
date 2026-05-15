@@ -591,6 +591,20 @@
       border-top: 1px solid var(--border); font-family: var(--font-mono);
       font-size: 0.72rem; color: rgba(255,255,255,0.18);
     }
+    .contributors {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
+      gap: 8px; margin-top: 24px; font-size: 0.8rem; color: rgba(255,255,255,0.3);
+    }
+    .contributors .author {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: rgba(255,255,255,0.7); font-weight: 500;
+    }
+    .contributors img {
+      width: 22px; height: 22px; border-radius: 50%; object-fit: cover;
+    }
+    .contributors .sep {
+      color: rgba(255,255,255,0.12);
+    }
 
     /* ================================================
        SCROLL REVEAL SYSTEM
@@ -1007,6 +1021,11 @@
         <svg class="icon icon-sm"><use href="#i-github"/></svg>
         Star on GitHub
       </a>
+      <div class="contributors" id="contributors">
+        <span class="author"><img src="https://avatars.githubusercontent.com/u/146148528?v=4" alt="" loading="lazy"> <span>RyanTanC</span></span>
+        <span class="sep">·</span>
+        <span>Contributors</span>
+      </div>
       <div class="footer-line">
         © 2026 HNUST Python Exam Platform · GPL-3.0 License · Made with AI-Assisted Development
       </div>
@@ -1523,6 +1542,27 @@
         .catch(function() { /* 静默失败，保留默认值 */ });
     }
 
+    // ★ 加载 GitHub Contributors
+    function initContributors() {
+      var container = document.getElementById('contributors');
+      if (!container) return;
+      fetch('https://api.github.com/repos/RyanTanC/HNUST-Exam-System/contributors')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (!Array.isArray(data) || data.length < 2) return;
+          // data 按 commit 数降序，data[0] 是 RyanTanC
+          var others = data.filter(function(u) { return u.login !== 'RyanTanC'; });
+          if (others.length === 0) return;
+          var html = '<span class="author"><img src="https://avatars.githubusercontent.com/u/146148528?v=4" alt="" loading="lazy"> <span>RyanTanC</span></span>';
+          others.forEach(function(u) {
+            html += '<span class="sep">·</span>';
+            html += '<span><img src="' + u.avatar_url + '&s=44" alt="" loading="lazy"> <span>' + u.login + '</span></span>';
+          });
+          container.innerHTML = html;
+        })
+        .catch(function() { /* 静默失败，保留本地默认 */ });
+    }
+
     // ===================== INIT =====================
     function init() {
       initLoader(function() {
@@ -1546,6 +1586,7 @@
       initFeatureCardTilt();
       initSmoothScroll();
       initVersionInfo();
+      initContributors();
     }
 
     if (document.readyState === 'loading') {
