@@ -344,6 +344,64 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
+    /* ================================================
+       CHANGELOG — PYTHON CONSOLE
+       ================================================ */
+    .changelog-section {
+      max-width: 620px; width: 100%; margin-top: 48px;
+      animation: card-enter 0.8s cubic-bezier(.22,1,.36,1) 0.25s both;
+    }
+    .py-console {
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 16px; overflow: hidden;
+      font-family: var(--font-mono);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+    .py-titlebar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+    .py-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .py-dot.r { background: #ff5f56; }
+    .py-dot.y { background: #ffbd2e; }
+    .py-dot.g { background: #27c93f; }
+    .py-title-text {
+      font-size: 0.7rem; color: var(--text-dim);
+      letter-spacing: 0.03em;
+    }
+    .py-body {
+      padding: 16px 20px; max-height: 440px;
+      overflow-y: auto; position: relative;
+    }
+    .py-body::-webkit-scrollbar { width: 4px; }
+    .py-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+    .py-line {
+      white-space: pre-wrap; word-wrap: break-word;
+      font-family: var(--font-mono);
+      font-size: 0.78rem; line-height: 1.75;
+      min-height: 1.75em;
+    }
+    .py-line .prompt { color: rgba(255,255,255,0.12); }
+    .py-line.heading { color: rgba(255,255,255,0.35); }
+    .py-line.version { color: #ffbd2e; font-weight: 600; }
+    .py-line.feat { color: #86efac; }
+    .py-line.fix { color: #f87171; }
+    .py-line.opt { color: #60a5fa; }
+    .py-line.major { color: #c084fc; }
+    .py-cursor-span {
+      display: inline-block;
+      color: #86efac;
+      animation: blink-cursor 0.7s step-end infinite;
+    }
+    @keyframes blink-cursor {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
@@ -445,6 +503,21 @@
         </div>
         <div class="gallery-item">
           <img class="gallery-img" src="./images/4.png" alt="成绩查询">
+        </div>
+      </div>
+    </div>
+
+    <!-- Changelog: Python Console -->
+    <div class="changelog-section">
+      <div class="py-console">
+        <div class="py-titlebar">
+          <span class="py-dot r"></span>
+          <span class="py-dot y"></span>
+          <span class="py-dot g"></span>
+          <span class="py-title-text">🐍 更新日志 — PYTHON CONSOLE</span>
+        </div>
+        <div class="py-body" id="py-body">
+          <div id="py-output"></div>
         </div>
       </div>
     </div>
@@ -606,6 +679,130 @@
         container.innerHTML = html;
       })
       .catch(function() { /* 静默失败 */ });
+  })();
+  </script>
+  <!-- Changelog Typewriter -->
+  <script>
+  (function() {
+    'use strict';
+
+    /* 📋 更新日志 — Python Console 逐字打字机效果 */
+    var LINES = [
+      ["# HNUST 考试仿真平台 — 更新日志", "heading"],
+      ["", ""],
+      ["v1.1.1 — 2026-05-08", "version"],
+      ["  🐛 修复：修复已知问题", "fix"],
+      ["", ""],
+      ["v1.1.0 — 2026-05-04", "version"],
+      ["  🔥 重大重构：从单文件 tkinter 架构全面迁移至 PySide6 MVC 分层包结构", "major"],
+      ["  🌙 深色模式：一键切换深色/浅色主题，夜间刷题更护眼", "feat"],
+      ["  ⚙️ 设置面板：集中管理字体大小、主题偏好等个性化配置", "feat"],
+      ["  ⚡ 即时反馈：答题后实时显示对错，无需等待交卷", "feat"],
+      ["  📊 进度追踪：可视化展示各题型完成情况与得分趋势", "feat"],
+      ["  🧠 题目分析（豆包）：接入 AI 智能分析，辅助理解错题思路", "feat"],
+      ["  🎴 卡片动效选卷：全新试卷选择界面，搭配流畅动画效果", "feat"],
+      ["  🐍 Python 环境对话框：首次使用编程题时自动检测并引导配置", "feat"],
+      ["  🏆 结果页增强：考试结束后展示更详细的得分明细与知识点统计", "feat"],
+      ["  🛡️ 提交确认增强：交卷前智能检测未答题目，防止误操作遗漏", "feat"],
+      ["  🔄 更新提示：优化更新检测流程，新版本提醒更醒目友好", "feat"],
+      ["  🎯 模糊匹配：基于 difflib 智能判分，轻微拼写差异不再冤枉扣分", "feat"],
+      ["  ✅ 新增 22 个单元测试用例，覆盖配置管理与评分引擎核心逻辑", "feat"],
+      ["  ✂️ 引号归一化：自动统一中英文引号格式，评分结果更准确公正", "feat"],
+      ["  🧩 自定义控件：封装通用 UI 组件，界面风格统一交互更细腻", "feat"],
+      ["", ""],
+      ["v1.0.4 — 2026-04-29", "version"],
+      ["  ✨ 新增：标记功能，特别感谢 RainMoe 同学的技术支持", "feat"],
+      ["  ✨ 新增：重做功能，支持写错内容时快速重新编辑", "feat"],
+      ["  ✨ 优化：题目导航栏滚轮滑动交互，提升操作体验", "opt"],
+      ["  🐛 修复：答案过长导致 Lab 栏消失的问题；优化动态适配逻辑", "fix"],
+      ["", ""],
+      ["v1.0.3 — 2026-04-26", "version"],
+      ["  🐛 修复：修正题目内容、答案及题干错误", "fix"],
+      ["", ""],
+      ["v1.0.2 — 2026-04-25", "version"],
+      ["  🐛 修复：修复已知问题", "fix"],
+      ["", ""],
+      ["v1.0.1 — 2026-04-24", "version"],
+      ["  🐛 修复：修正题目内容、答案及题干错误", "fix"],
+      ["  ✨ 优化：提升题库数据准确性与稳定性", "opt"],
+      ["", ""],
+      ["v1.0.0 — 2026-04-24", "version"],
+      ["  🎉 正式版发布，进入稳定使用阶段", "feat"],
+      ["", ""],
+      ["v1.0.0-beta.2 — 2026-04-19", "version"],
+      ["  🔧 新增：内置自动检查更新功能", "feat"],
+      ["  🐛 优化了部分界面显示逻辑", "fix"],
+      ["", ""],
+      ["v1.0.0-beta.1 — 2026-04-19", "version"],
+      ["  🎉 首个内测版本发布", "feat"],
+      ["  ✨ 实现考试、判分等核心基础功能", "feat"],
+    ];
+
+    var SPEED = 8;  // ms per character
+
+    var outputEl = document.getElementById('py-output');
+    if (!outputEl) return;
+
+    var lineIdx = 0, charIdx = 0;
+    var curLine = null, txtNode = null, cursorEl = null;
+
+    function mkCursor() {
+      var s = document.createElement('span');
+      s.className = 'py-cursor-span';
+      s.textContent = '█';
+      return s;
+    }
+
+    function scrollDown() {
+      var box = document.getElementById('py-body');
+      if (box) box.scrollTop = box.scrollHeight;
+    }
+
+    function typeTick() {
+      if (lineIdx >= LINES.length) {
+        var fin = document.createElement('div');
+        fin.className = 'py-line';
+        var pp = document.createElement('span'); pp.className = 'prompt'; pp.textContent = '>>> ';
+        fin.appendChild(pp);
+        fin.appendChild(mkCursor());
+        outputEl.appendChild(fin);
+        scrollDown();
+        return;
+      }
+
+      var line = LINES[lineIdx], text = line[0], cls = line[1];
+
+      if (!curLine) {
+        curLine = document.createElement('div');
+        curLine.className = 'py-line' + (cls ? ' ' + cls : '');
+        var pr = document.createElement('span'); pr.className = 'prompt'; pr.textContent = '>>> ';
+        curLine.appendChild(pr);
+        txtNode = document.createTextNode('');
+        curLine.appendChild(txtNode);
+        cursorEl = mkCursor();
+        curLine.appendChild(cursorEl);
+        outputEl.appendChild(curLine);
+        scrollDown();
+      }
+
+      if (charIdx < text.length) {
+        txtNode.appendData(text[charIdx]);
+        charIdx++;
+        scrollDown();
+        var ch = text[charIdx - 1];
+        var d = SPEED;
+        if ('。：，！？；'.indexOf(ch) !== -1) d = SPEED * 6;
+        else if (' ——-'.indexOf(ch) !== -1) d = SPEED * 2;
+        setTimeout(typeTick, d);
+      } else {
+        if (cursorEl && cursorEl.parentNode) cursorEl.parentNode.removeChild(cursorEl);
+        cursorEl = null; txtNode = null;
+        lineIdx++; charIdx = 0; curLine = null;
+        setTimeout(typeTick, SPEED * 3);
+      }
+    }
+
+    setTimeout(typeTick, 600);
   })();
   </script>
 </body>
