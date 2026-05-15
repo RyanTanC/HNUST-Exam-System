@@ -672,10 +672,13 @@
     }
 
     /* Shimmer */
-    .shimmer {
+    #subtitle-glow.shimmer {
       background: linear-gradient(90deg, var(--text) 0%, var(--primary) 50%, var(--text) 100%);
-      background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; animation: shimmer 4s linear infinite;
+      background-size: 200% auto;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: shimmer 4s linear infinite;
+      display: inline-block;
     }
     @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
 
@@ -1520,7 +1523,7 @@
         .catch(function() { /* 静默失败，保留默认值 */ });
     }
 
-    // ★ 新增: 标题鼠标跟随光晕
+    // ★ 标题鼠标跟随光晕（手电筒效果）
     function initSubtitleGlow() {
       if (!isHoverDevice) return;
       var el = document.getElementById('subtitle-glow');
@@ -1531,7 +1534,9 @@
         var mx = ((e.clientX - rect.left) / rect.width * 100).toFixed(1);
         var my = ((e.clientY - rect.top) / rect.height * 100).toFixed(1);
         el.style.animation = 'none';
-        el.style.background = 'radial-gradient(circle at ' + mx + '% ' + my + '%, var(--primary) 0%, var(--accent) 30%, var(--text) 65%, var(--text) 100%)';
+        // circle 100px 控制光晕半径，颜色在短距离内过渡到暗色
+        el.style.background = 'radial-gradient(circle 100px at ' + mx + '% ' + my + '%, ' +
+          'var(--primary) 0%, var(--accent) 15%, var(--text) 35%, var(--text) 100%)';
       });
 
       el.addEventListener('mouseleave', function() {
