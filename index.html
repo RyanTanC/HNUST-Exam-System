@@ -802,7 +802,7 @@
                   </div>
 
                   <p class="hero-card-meta"><span class="label">OFFICIAL DOWNLOAD</span></p>
-                  <h3 style="font-size:1.3rem;margin-bottom:8px">HNUST仿真平台 v1.0.3</h3>
+                  <h3 style="font-size:1.3rem;margin-bottom:8px" id="hero-version">HNUST仿真平台 v1.0.3</h3>
                   <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:20px">
                     免费开源 · 无需安装 · 自动更新 · 全题型支持
                   </p>
@@ -814,7 +814,7 @@
                     </div>
                     <div class="hero-card-tag">
                       <svg class="icon icon-sm" style="color:var(--accent)"><use href="#i-clock"/></svg>
-                      2026-04-26
+                      <span id="hero-date">2026-04-26</span>
                     </div>
                   </div>
 
@@ -944,7 +944,7 @@
         <a href="./download.html"
            class="btn btn-primary btn-lg magnetic-btn" style="animation:pulse-glow 3s ease-in-out infinite">
           <svg class="icon icon-md"><use href="#i-download"/></svg>
-          下载 HNUST 仿真平台 v1.0.3
+          <span id="dl-cta-version">下载 HNUST 仿真平台 v1.0.3</span>
         </a>
         <div class="download-features">
           <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 完全免费</span>
@@ -953,7 +953,7 @@
           <span><svg class="icon icon-sm" style="color:#4ade80"><use href="#i-check-circle"/></svg> 开源 GPL-3.0</span>
         </div>
         <div class="version-info">
-          <span>v1.0.3 · 2026-04-26</span>
+          <span id="dl-info-version">v1.0.3 · 2026-04-26</span>
           <span>Windows EXE</span>
         </div>
       </div>
@@ -1467,6 +1467,31 @@
       }, 55);
     }
 
+    // ===================== FETCH LATEST VERSION =====================
+    function initVersionInfo() {
+      var API = 'https://api.github.com/repos/RyanTanC/HNUST-Exam-System/releases/latest';
+      fetch(API, { headers: { 'Accept': 'application/vnd.github.v3+json' } })
+        .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function(data) {
+          var tag = data.tag_name || '';
+          var date = (data.published_at || '').split('T')[0];
+          if (!tag) return;
+          // Hero card title
+          var hv = document.getElementById('hero-version');
+          if (hv) hv.textContent = 'HNUST仿真平台 ' + tag;
+          // Hero card date
+          var hd = document.getElementById('hero-date');
+          if (hd && date) hd.textContent = date;
+          // Download CTA button text
+          var dv = document.getElementById('dl-cta-version');
+          if (dv) dv.textContent = '下载 HNUST 仿真平台 ' + tag;
+          // Download section version info
+          var di = document.getElementById('dl-info-version');
+          if (di && date) di.textContent = tag + ' · ' + date;
+        })
+        .catch(function() { /* 静默失败，保留默认值 */ });
+    }
+
     // ===================== INIT =====================
     function init() {
       initLoader(function() {
@@ -1489,6 +1514,7 @@
       initParallaxOrbs();
       initFeatureCardTilt();
       initSmoothScroll();
+      initVersionInfo();
     }
 
     if (document.readyState === 'loading') {
