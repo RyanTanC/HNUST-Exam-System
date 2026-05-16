@@ -211,8 +211,6 @@
     #tcomment .tk-extra { color: var(--text-dim); }
     #tcomment .tk-action-icon { color: var(--text-dim); }
     #tcomment .tk-action-icon:hover { color: var(--primary); }
-    #tcomment .tk-row:has(input[name="mail"]),
-    #tcomment .tk-row:has(input[name="url"]) { display: none; }
 
     /* Footer */
     .cm-footer {
@@ -354,7 +352,30 @@
       el: '#tcomment',
       lang: 'zh-CN',
       requiredFields: ['nick'],
+    }).then(function() {
+      // Twikoo 渲染完成后隐藏邮箱和网址字段
+      hideFields();
+    })['catch'](function() {
+      // init 失败时也尝试隐藏
+      setTimeout(hideFields, 3000);
     });
+
+    function hideFields() {
+      // 持续尝试直到找到字段并隐藏
+      var tries = 0;
+      var timer = setInterval(function() {
+        tries++;
+        var rows = document.querySelectorAll('#tcomment .tk-row');
+        if (rows.length === 0 && tries < 20) return;
+        clearInterval(timer);
+        for (var i = 0; i < rows.length; i++) {
+          var input = rows[i].querySelector('input');
+          if (input && (input.name === 'mail' || input.name === 'url')) {
+            rows[i].style.display = 'none';
+          }
+        }
+      }, 200);
+    }
   })();
   </script>
 </body>
