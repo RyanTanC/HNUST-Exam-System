@@ -211,6 +211,7 @@
     #tcomment .tk-extra { color: var(--text-dim); }
     #tcomment .tk-action-icon { color: var(--text-dim); }
     #tcomment .tk-action-icon:hover { color: var(--primary); }
+    #tcomment .tk-comment-form .tk-row:has(input[name="url"]) { display: none; }
 
     /* Footer */
     .cm-footer {
@@ -338,6 +339,7 @@
       envId: 'https://twikoo-vercel-jaccox599-ryantancs-projects.vercel.app',
       el: '#tcomment',
       lang: 'zh-CN',
+      requiredFields: ['nick', 'mail'],
     });
   })();
   </script>
