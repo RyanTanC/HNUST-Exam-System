@@ -284,31 +284,14 @@
       display: block;
     }
 
-    /* Image zoom overlay */
-    .img-zoom-overlay {
-      position: fixed; inset: 0; z-index: 99999;
+    .img-zoom-backdrop {
+      position: fixed; inset: 0; z-index: 99998;
       background: rgba(0,0,0,0.65);
-      display: flex; align-items: center; justify-content: center;
       opacity: 0;
       transition: opacity 0.3s cubic-bezier(.22,1,.36,1);
-      cursor: zoom-out;
     }
-    .img-zoom-overlay.active {
+    .img-zoom-backdrop.active {
       opacity: 1;
-    }
-    .img-zoom-overlay img {
-      max-width: 90vw; max-height: 90vh;
-      width: auto; height: auto;
-      object-fit: contain;
-      border-radius: 8px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
-      cursor: zoom-out;
-      transform: scale(0.5);
-      transition: transform 0.25s cubic-bezier(.22,1,.36,1);
-    }
-    .img-zoom-overlay.active img {
-      transition: transform 0.45s cubic-bezier(.34,1.56,.64,1);
-      transform: scale(1);
     }
     .gallery-img-placeholder {
       width: 100%; aspect-ratio: 16/10;
@@ -835,43 +818,80 @@
       .catch(function() { /* 静默失败 */ });
   })();
   </script>
-  <!-- Image zoom overlay -->
+  <!-- Image zoom with fly-from-thumbnail animation -->
   <script>
   (function() {
     'use strict';
-    var overlay = null;
+    var state = null;
 
-    function closeOverlay() {
-      if (!overlay) return;
-      overlay.classList.remove('active');
-      overlay.addEventListener('transitionend', function() {
-        if (overlay && overlay.parentNode) {
-          overlay.parentNode.removeChild(overlay);
-        }
-        overlay = null;
-      }, { once: true });
+    function closeZoom() {
+      if (!state) return;
+      var s = state;
+      s.closing = true;
+
+      s.backdrop.classList.remove('active');
+      var r = s.origImg.getBoundingClientRect();
+      s.wrapper.style.transition = 'all 0.25s cubic-bezier(.22,1,.36,1)';
+      s.wrapper.style.left = r.left + 'px';
+      s.wrapper.style.top = r.top + 'px';
+      s.wrapper.style.width = r.width + 'px';
+      s.wrapper.style.height = r.height + 'px';
+
+      setTimeout(function() {
+        if (s.backdrop.parentNode) s.backdrop.parentNode.removeChild(s.backdrop);
+        if (s.wrapper.parentNode) s.wrapper.parentNode.removeChild(s.wrapper);
+        state = null;
+      }, 300);
     }
 
     document.querySelectorAll('.gallery-img').forEach(function(img) {
       img.addEventListener('mouseenter', function() {
-        if (overlay) return;
+        if (state) return;
 
-        overlay = document.createElement('div');
-        overlay.className = 'img-zoom-overlay';
+        var rect = this.getBoundingClientRect();
+        var nw = this.naturalWidth, nh = this.naturalHeight;
+
+        // Target centered size (consistent max bounds)
+        var maxW = Math.min(window.innerWidth * 0.8, 860);
+        var maxH = Math.min(window.innerHeight * 0.7, 660);
+        var ratio = nw / nh;
+        var fw = maxW, fh = fw / ratio;
+        if (fh > maxH) { fh = maxH; fw = fh * ratio; }
+        var fx = (window.innerWidth - fw) / 2;
+        var fy = (window.innerHeight - fh) / 2;
+
+        // Backdrop
+        var backdrop = document.createElement('div');
+        backdrop.className = 'img-zoom-backdrop';
+        backdrop.addEventListener('click', closeZoom);
+        document.body.appendChild(backdrop);
+
+        // Image wrapper at thumbnail position
+        var wrapper = document.createElement('div');
+        wrapper.style.cssText = 'position:fixed;z-index:99999;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;transition:all 0.4s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;';
 
         var zoomImg = document.createElement('img');
         zoomImg.src = this.src;
         zoomImg.alt = this.alt;
-        overlay.appendChild(zoomImg);
+        zoomImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:6px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:block;';
+        wrapper.appendChild(zoomImg);
+        document.body.appendChild(wrapper);
 
-        document.body.appendChild(overlay);
+        state = { wrapper: wrapper, backdrop: backdrop, origImg: this, closing: false };
 
+        // Animate open: backdrop fades, wrapper flies to center
         requestAnimationFrame(function() {
-          overlay.classList.add('active');
+          backdrop.classList.add('active');
+          wrapper.style.left = fx + 'px';
+          wrapper.style.top = fy + 'px';
+          wrapper.style.width = fw + 'px';
+          wrapper.style.height = fh + 'px';
         });
 
-        zoomImg.addEventListener('mouseleave', function() {
-          closeOverlay();
+        // Close when mouse leaves the zoomed image area
+        wrapper.addEventListener('mouseleave', function() {
+          if (!state || state.closing) return;
+          closeZoom();
         });
       });
     });
