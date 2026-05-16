@@ -527,7 +527,7 @@
   <div class="page-wrapper">
 
     <!-- Back link -->
-    <a href="./index.html?skipLoader=1" class="back-link" style="margin-bottom:40px">
+    <a href="./index.html?skipLoader=1" class="back-link magnetic-btn" style="margin-bottom:40px">
       <svg class="icon icon-sm"><use href="#i-arrow-left"/></svg>
       返回首页
     </a>
@@ -570,7 +570,7 @@
         </div>
 
         <div class="dl-btn-wrap">
-          <a id="dl-btn" href="#" class="dl-btn" target="_blank" rel="noopener">
+          <a id="dl-btn" href="#" class="dl-btn magnetic-btn" target="_blank" rel="noopener">
             <svg class="icon icon-md"><use href="#i-download"/></svg>
             立即下载 EXE 安装包
           </a>
@@ -581,12 +581,12 @@
         <div class="alt-dl-section">
           <div class="alt-dl-divider">其他下载方式</div>
           <div class="alt-dl-grid">
-            <a href="https://pan.baidu.com/s/5MyCpAIYS1itBgGMaplJokQ" class="alt-dl-card baidu" target="_blank" rel="noopener">
+            <a href="https://pan.baidu.com/s/5MyCpAIYS1itBgGMaplJokQ" class="alt-dl-card baidu magnetic-btn" target="_blank" rel="noopener">
               <span class="alt-dl-icon"><img src="./images/baidu.svg" alt="百度网盘"></span>
               <span class="alt-dl-title">百度网盘</span>
               <span class="alt-dl-desc">不限速下载</span>
             </a>
-            <a href="https://1820651549.share.123865.com/123pan/Nrp1jv-2D1md" class="alt-dl-card pan123" target="_blank" rel="noopener">
+            <a href="https://1820651549.share.123865.com/123pan/Nrp1jv-2D1md" class="alt-dl-card pan123 magnetic-btn" target="_blank" rel="noopener">
               <span class="alt-dl-icon"><img src="./images/pan123.svg" alt="123云盘"></span>
               <span class="alt-dl-title">123 云盘</span>
               <span class="alt-dl-desc">不限速下载</span>
@@ -789,14 +789,39 @@
       });
     }
 
+    // ===================== MAGNETIC BUTTONS =====================
+    function initMagneticButtons() {
+      if (!isHoverDevice) return;
+      var btns = document.querySelectorAll('.magnetic-btn');
+
+      btns.forEach(function(btn) {
+        btn.addEventListener('mousemove', function(e) {
+          var rect = btn.getBoundingClientRect();
+          var dx = (e.clientX - rect.left - rect.width / 2) * 0.2;
+          var dy = (e.clientY - rect.top - rect.height / 2) * 0.2;
+          btn.style.transform = 'translate(' + dx + 'px, ' + dy + 'px) scale(1.05)';
+        });
+
+        btn.addEventListener('mouseleave', function() {
+          btn.style.transition = 'transform 0.5s cubic-bezier(.175,.885,.32,1.275)';
+          btn.style.transform = '';
+          setTimeout(function() {
+            btn.style.transition = '';
+          }, 500);
+        });
+      });
+    }
+
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', function() {
         initCursorGlow();
         initTiltCard();
+        initMagneticButtons();
       });
     } else {
       initCursorGlow();
       initTiltCard();
+      initMagneticButtons();
     }
 
     // ★ 加载 GitHub Contributors
