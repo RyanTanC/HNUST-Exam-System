@@ -231,6 +231,16 @@
     }
     .cm-footer .back-home:hover { color: var(--primary); }
 
+    /* Admin entry (top-right gear) */
+    .admin-entry {
+      position: fixed; top: 20px; right: 22px; z-index: 9999;
+      font-size: 15px; opacity: 0.25; cursor: pointer;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      text-decoration: none; line-height: 1;
+    }
+    .admin-entry:hover { opacity: 0.7; transform: scale(1.1); }
+    @media (max-width: 640px) { .admin-entry { top: 14px; right: 16px; font-size: 13px; opacity: 0.2; } }
+
     /* ================================================
        ANIMATIONS
        ================================================ */
@@ -263,6 +273,9 @@
     <div class="orb orb-2"></div>
   </div>
   <div id="cursor-glow"></div>
+
+  <!-- Admin entry (tiny, top-right) -->
+  <a href="./admin.html" class="admin-entry" title="管理后台">⚙️</a>
 
   <div class="page-wrapper">
 
@@ -339,7 +352,7 @@
       envId: 'https://twikoo-vercel-jaccox599-ryantancs-projects.vercel.app',
       el: '#tcomment',
       lang: 'zh-CN',
-      requiredFields: ['nick', 'mail'],
+      requiredFields: ['nick'],
     });
   })();
   </script>
