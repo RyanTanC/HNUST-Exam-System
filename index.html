@@ -1186,12 +1186,8 @@
         if (glassInited) return;
         glassInited = true;
 
-        // 立即压制 CSS opacity 过渡，避免闪烁
-        nav.style.opacity = '0';
-
         if (typeof liquidGL === 'undefined') {
           // liquidGL 尚未加载，回退到 CSS 样式
-          nav.style.opacity = '';
           return;
         }
 
