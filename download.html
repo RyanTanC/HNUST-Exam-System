@@ -280,15 +280,16 @@
     }
     .gallery-item:hover { border-color: rgba(var(--primary-rgb), 0.3); }
     .gallery-img {
-      width: 100%; aspect-ratio: 16/10; object-fit: contain; padding: 4px;
-      background: rgba(255,255,255,0.03);
+      width: 100%; aspect-ratio: 16/10; object-fit: contain;
       transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
       position: relative; z-index: 1;
     }
     .gallery-img.zoomed {
       transform: scale(2.5);
-      z-index: 100;
+      z-index: 9999;
       position: relative;
+      border-radius: 8px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
     }
     .gallery-img-placeholder {
       width: 100%; aspect-ratio: 16/10;
