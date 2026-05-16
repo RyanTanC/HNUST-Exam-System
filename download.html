@@ -290,7 +290,7 @@
       background: rgba(0,0,0,0.65);
       display: flex; align-items: center; justify-content: center;
       opacity: 0;
-      transition: opacity 0.25s ease;
+      transition: opacity 0.3s cubic-bezier(.22,1,.36,1);
       cursor: zoom-out;
     }
     .img-zoom-overlay.active {
@@ -303,10 +303,11 @@
       border-radius: 8px;
       box-shadow: 0 8px 40px rgba(0,0,0,0.5);
       cursor: zoom-out;
-      transform: scale(0.92);
-      transition: transform 0.3s cubic-bezier(.175,.885,.32,1.275);
+      transform: scale(0.5);
+      transition: transform 0.25s cubic-bezier(.22,1,.36,1);
     }
     .img-zoom-overlay.active img {
+      transition: transform 0.45s cubic-bezier(.34,1.56,.64,1);
       transform: scale(1);
     }
     .gallery-img-placeholder {
