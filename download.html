@@ -275,15 +275,20 @@
     }
     .gallery-item {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: 16px; overflow: hidden; cursor: zoom-in;
+      border-radius: 16px; cursor: zoom-in;
       transition: border-color 0.3s ease;
     }
     .gallery-item:hover { border-color: rgba(var(--primary-rgb), 0.3); }
-    .gallery-item:hover .gallery-img { transform: scale(2); }
     .gallery-img {
       width: 100%; aspect-ratio: 16/10; object-fit: contain; padding: 4px;
       background: rgba(255,255,255,0.03);
       transition: transform 0.4s cubic-bezier(.175,.885,.32,1.275);
+      position: relative; z-index: 1;
+    }
+    .gallery-img.zoomed {
+      transform: scale(2.5);
+      z-index: 100;
+      position: relative;
     }
     .gallery-img-placeholder {
       width: 100%; aspect-ratio: 16/10;
@@ -810,6 +815,22 @@
       .catch(function() { /* 静默失败 */ });
   })();
   </script>
+  <!-- Gallery Image Zoom -->
+  <script>
+  (function() {
+    'use strict';
+    var imgs = document.querySelectorAll('.gallery-img');
+    for (var i = 0; i < imgs.length; i++) {
+      imgs[i].addEventListener('mouseenter', function() {
+        this.classList.add('zoomed');
+      });
+      imgs[i].addEventListener('mouseleave', function() {
+        this.classList.remove('zoomed');
+      });
+    }
+  })();
+  </script>
+
   <!-- Changelog Typewriter (auto-fetch from README) -->
   <script>
   (function() {
