@@ -395,13 +395,21 @@
        ================================================ */
     .navbar {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-80px);
-      z-index: 9990; display: flex; align-items: center; gap: 20px;
+      z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
-      border: 1px solid var(--border); background: rgba(8,8,16,0.75);
-      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      opacity: 0; transition: transform 0.5s cubic-bezier(.22,1,.36,1), opacity 0.5s ease;
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(.22,1,.36,1);
+      /* liquidGL handles background/border/frost */
+      background: transparent !important;
+      border: none !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
     }
-    .navbar.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .navbar.visible { transform: translateX(-50%) translateY(0); }
+    .nav-inner {
+      position: relative; z-index: 3; pointer-events: auto;
+      display: flex; align-items: center; gap: 20px;
+    }
     .nav-logo { font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: var(--primary); }
     .nav-divider { width: 1px; height: 14px; background: var(--border-light); }
     .nav-link {
@@ -409,9 +417,7 @@
       position: relative; padding-bottom: 2px;
     }
     .nav-link:hover { color: var(--primary); }
-    /* ★ 新增: 活跃导航高亮 */
     .nav-link.active { color: var(--primary); }
-    /* ★ 活跃导航高亮 */
     .nav-link.active::after {
       content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
       width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
@@ -782,15 +788,17 @@
   <!-- ================================================
        NAVBAR
        ================================================ -->
-<nav class="navbar" id="navbar">
-    <span class="nav-logo">HNUST</span>
-    <span class="nav-divider"></span>
-    <a href="#hero" class="nav-link active">首页</a>
-    <a href="#features" class="nav-link">功能</a>
-    <a href="#why" class="nav-link">优势</a>
-    <a href="#download" class="nav-link">下载</a>
-    <!-- 评论区入口：去掉下面这行的注释即可恢复显示 -->
-    <!-- <a href="./comment.html" class="nav-link">评论区</a> -->
+<nav class="navbar liquidGL" id="navbar">
+    <div class="nav-inner">
+      <span class="nav-logo">HNUST</span>
+      <span class="nav-divider"></span>
+      <a href="#hero" class="nav-link active">首页</a>
+      <a href="#features" class="nav-link">功能</a>
+      <a href="#why" class="nav-link">优势</a>
+      <a href="#download" class="nav-link">下载</a>
+      <!-- 评论区入口：去掉下面这行的注释即可恢复显示 -->
+      <!-- <a href="./comment.html" class="nav-link">评论区</a> -->
+    </div>
   </nav>
 
   <!-- ================================================
@@ -1047,6 +1055,10 @@
   <!-- ================================================
        JAVASCRIPT — Zero dependencies, vanilla only
        ================================================ -->
+  <!-- liquidGL dependencies -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="./scripts/liquidGL.js" defer></script>
+
   <script>
   (function() {
     'use strict';
@@ -1163,13 +1175,50 @@
       update();
     }
 
-    // ===================== NAVBAR + ACTIVE TRACKING =====================
+    // ===================== NAVBAR + LIQUID GLASS =====================
     function initNavbar() {
       var nav = document.getElementById('navbar');
       if (!nav) return;
 
+      var glassInited = false;
+
+      function initGlass() {
+        if (glassInited) return;
+        glassInited = true;
+
+        // Wait a frame for the CSS transition to start
+        requestAnimationFrame(function() {
+          if (typeof liquidGL === 'undefined') return;
+
+          try {
+            liquidGL({
+              target: '.liquidGL',
+              snapshot: 'body',
+              resolution: 1.5,
+              refraction: 0.008,
+              bevelDepth: 0.05,
+              bevelWidth: 0.12,
+              frost: 0.4,
+              shadow: true,
+              specular: true,
+              reveal: 'fade',
+              magnify: 1,
+            });
+
+            // Register nav-inner so hover/active states update in the glass
+            var inner = document.querySelector('.nav-inner');
+            if (inner) {
+              liquidGL.registerDynamic(inner);
+            }
+          } catch(e) {
+            console.warn('liquidGL init failed:', e);
+          }
+        });
+      }
+
       function update() {
         if (window.scrollY > 350) {
+          if (!glassInited) initGlass();
           nav.classList.add('visible');
         } else {
           nav.classList.remove('visible');
