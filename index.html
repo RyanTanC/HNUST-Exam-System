@@ -398,14 +398,14 @@
       z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
       opacity: 0;
-      transition: transform 0.5s cubic-bezier(.22,1,.36,1);
-      /* liquidGL handles background/border/frost */
-      background: transparent !important;
-      border: none !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
+      transition: transform 0.5s cubic-bezier(.22,1,.36,1), opacity 0.5s ease;
+      /* liquidGL 会通过 inline style 覆盖以下属性 */
+      background: transparent;
+      border: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
     }
-    .navbar.visible { transform: translateX(-50%) translateY(0); }
+    .navbar.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
       display: flex; align-items: center; gap: 20px;
@@ -1186,34 +1186,38 @@
         if (glassInited) return;
         glassInited = true;
 
-        // Wait a frame for the CSS transition to start
-        requestAnimationFrame(function() {
-          if (typeof liquidGL === 'undefined') return;
+        // 立即压制 CSS opacity 过渡，避免闪烁
+        nav.style.opacity = '0';
 
-          try {
-            liquidGL({
-              target: '.liquidGL',
-              snapshot: 'body',
-              resolution: 1.5,
-              refraction: 0.008,
-              bevelDepth: 0.05,
-              bevelWidth: 0.12,
-              frost: 0.4,
-              shadow: true,
-              specular: true,
-              reveal: 'fade',
-              magnify: 1,
-            });
+        if (typeof liquidGL === 'undefined') {
+          // liquidGL 尚未加载，回退到 CSS 样式
+          nav.style.opacity = '';
+          return;
+        }
 
-            // Register nav-inner so hover/active states update in the glass
-            var inner = document.querySelector('.nav-inner');
-            if (inner) {
-              liquidGL.registerDynamic(inner);
-            }
-          } catch(e) {
-            console.warn('liquidGL init failed:', e);
+        try {
+          liquidGL({
+            target: '.liquidGL',
+            snapshot: 'body',
+            resolution: 1.5,
+            refraction: 0.008,
+            bevelDepth: 0.05,
+            bevelWidth: 0.12,
+            frost: 0.4,
+            shadow: true,
+            specular: true,
+            reveal: 'fade',
+            magnify: 1,
+          });
+
+          // Register nav-inner so hover/active states update in the glass
+          var inner = document.querySelector('.nav-inner');
+          if (inner) {
+            liquidGL.registerDynamic(inner);
           }
-        });
+        } catch(e) {
+          console.warn('liquidGL init failed:', e);
+        }
       }
 
       function update() {
