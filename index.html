@@ -421,15 +421,31 @@
     .nav-logo { font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: var(--primary); text-shadow: 0 0 12px rgba(139,92,246,0.3); }
     .nav-divider { width: 1px; height: 14px; background: var(--border-light); }
     .nav-link {
-      font-size: 0.78rem; color: var(--text-muted); transition: color 0.2s ease, text-shadow 0.2s ease;
+      font-size: 0.78rem; color: var(--text-muted);
+      transition: color 0.45s cubic-bezier(.22,1,.36,1), text-shadow 0.45s cubic-bezier(.22,1,.36,1);
       position: relative; padding: 4px 2px;
+    }
+    .nav-link::after {
+      content: ''; position: absolute; bottom: -2px; left: 50%;
+      width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+      transform: translateX(-50%) scale(0);
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(.34,1.56,.64,1), opacity 0.4s ease;
+      pointer-events: none;
     }
     .nav-link:hover { color: var(--primary); text-shadow: 0 0 8px rgba(139,92,246,0.3); }
     .nav-link.active { color: var(--primary); text-shadow: 0 0 8px rgba(139,92,246,0.3); }
     .nav-link.active::after {
-      content: ''; position: absolute; bottom: -2px; left: 50%; transform: translateX(-50%);
-      width: 4px; height: 4px; border-radius: 50%; background: var(--primary);
+      transform: translateX(-50%) scale(1);
+      opacity: 1;
       animation: pulse-dot 2s ease infinite;
+    }
+    .nav-indicator {
+      position: absolute; bottom: -3px; height: 2px; border-radius: 1px;
+      background: linear-gradient(90deg, rgba(139,92,246,0), var(--primary), rgba(139,92,246,0));
+      box-shadow: 0 0 8px rgba(139,92,246,0.4);
+      pointer-events: none;
+      transition: left 0.5s cubic-bezier(.34,1.56,.64,1), width 0.5s cubic-bezier(.34,1.56,.64,1);
     }
 
     /* ================================================
@@ -806,6 +822,7 @@
       <a href="#download" class="nav-link">下载</a>
       <!-- 评论区入口：去掉下面这行的注释即可恢复显示 -->
       <!-- <a href="./comment.html" class="nav-link">评论区</a> -->
+      <div class="nav-indicator" id="navIndicator"></div>
     </div>
   </nav>
 
@@ -1280,11 +1297,26 @@
       update();
     }
 
-    // ★ 新增: 活跃导航链接追踪
+    // ★ 新增: 活跃导航链接追踪 + 滑动指示器
     function initActiveNavTracking() {
       var sections = document.querySelectorAll('section[id]');
       var navLinks = document.querySelectorAll('.nav-link');
-      if (!sections.length || !navLinks.length) return;
+      var indicator = document.getElementById('navIndicator');
+      if (!sections.length || !navLinks.length || !indicator) return;
+
+      function positionIndicator() {
+        var active = document.querySelector('.nav-link.active');
+        if (!active) { indicator.style.opacity = '0'; return; }
+        var container = active.parentElement;
+        if (!container) return;
+        // 首次调用时布局可能尚未就绪
+        if (!container.getBoundingClientRect) return;
+        var cr = container.getBoundingClientRect();
+        var ar = active.getBoundingClientRect();
+        indicator.style.left = (ar.left - cr.left) + 'px';
+        indicator.style.width = ar.width + 'px';
+        indicator.style.opacity = '1';
+      }
 
       function update() {
         var scrollY = window.scrollY + 200;
@@ -1302,8 +1334,26 @@
             link.classList.remove('active');
           }
         });
+        positionIndicator();
       }
       window.addEventListener('scroll', update, { passive: true });
+      // 页面加载后等布局稳定再定位
+      if (document.readyState === 'complete') {
+        positionIndicator();
+      } else {
+        window.addEventListener('load', positionIndicator, { once: true });
+      }
+      // navbar visible 过渡完成后重新定位
+      var nav = document.getElementById('navbar');
+      if (nav) {
+        nav.addEventListener('transitionend', function(e) {
+          if (e.propertyName === 'transform' && nav.classList.contains('visible')) {
+            positionIndicator();
+          }
+        });
+      }
+      // resize 重新定位
+      window.addEventListener('resize', positionIndicator, { passive: true });
       update();
     }
 
