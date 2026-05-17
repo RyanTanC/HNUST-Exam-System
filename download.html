@@ -874,6 +874,10 @@
       if (!state) return;
       var s = state;
       s.closing = true;
+      // Restore gallery interaction when zoom closes
+      document.querySelectorAll('.gallery-img').forEach(function(g) {
+        g.style.pointerEvents = '';
+      });
 
       s.backdrop.classList.remove('active');
       var r = s.origImg.getBoundingClientRect();
@@ -890,11 +894,20 @@
       }, 300);
     }
 
+    // Escape key closes zoom
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && state) closeZoom();
+    });
+
     document.querySelectorAll('.gallery-img').forEach(function(img) {
       img.style.cursor = 'default';
       img.addEventListener('mouseenter', function() {
         if (state) return;
         if (zoomDisabled) return;
+        // Prevent gallery images from re-triggering while zoom is active
+        document.querySelectorAll('.gallery-img').forEach(function(g) {
+          g.style.pointerEvents = 'none';
+        });
 
         var rect = this.getBoundingClientRect();
         var nw = this.naturalWidth, nh = this.naturalHeight;
@@ -936,11 +949,7 @@
           wrapper.style.height = fh + 'px';
         });
 
-        // Close when mouse leaves the zoomed image area
-        wrapper.addEventListener('mouseleave', function() {
-          if (!state || state.closing) return;
-          closeZoom();
-        });
+        // Zoom closes via backdrop click or Escape key
       });
     });
   })();
