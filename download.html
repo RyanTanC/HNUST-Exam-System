@@ -860,6 +860,15 @@
   (function() {
     'use strict';
     var state = null;
+    var zoomDisabled = true; // 页面刚加载时禁用放大
+
+    // 2秒后恢复放大功能
+    setTimeout(function() {
+      zoomDisabled = false;
+      document.querySelectorAll('.gallery-img').forEach(function(img) {
+        img.style.cursor = 'zoom-in';
+      });
+    }, 2000);
 
     function closeZoom() {
       if (!state) return;
@@ -882,8 +891,10 @@
     }
 
     document.querySelectorAll('.gallery-img').forEach(function(img) {
+      img.style.cursor = 'default';
       img.addEventListener('mouseenter', function() {
         if (state) return;
+        if (zoomDisabled) return;
 
         var rect = this.getBoundingClientRect();
         var nw = this.naturalWidth, nh = this.naturalHeight;
