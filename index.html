@@ -1397,7 +1397,9 @@
           var start = performance.now();
 
           // ★ 新增: 计数中高亮
-          el.classList.add('counting');
+          // 起止颜色: 青色 #22d3ee -> 紫色 #8b5cf6
+          var c1r = 34, c1g = 211, c1b = 238;
+          var c2r = 139, c2g = 92, c2b = 246;
 
           function tick(now) {
             var elapsed = now - start;
@@ -1405,11 +1407,34 @@
             var eased = easeOutExpo(progress);
             var current = Math.floor(eased * target);
             el.textContent = formatNumber(current) + suffix;
+
+            // 颜色平滑渐变: 青 -> 紫
+            var r = Math.round(c1r + (c2r - c1r) * eased);
+            var g = Math.round(c1g + (c2g - c1g) * eased);
+            var b = Math.round(c1b + (c2b - c1b) * eased);
+            el.style.color = 'rgb(' + r + ',' + g + ',' + b + ')';
+
+            // 辉光跟随颜色
+            var glow = Math.round(20 * (1 - eased * 0.6));
+            el.style.textShadow = '0 0 ' + glow + 'px rgba(' + r + ',' + g + ',' + b + ',0.4)';
+
+            // 数字缓缓变大 (1.0 -> 1.10)
+            el.style.transform = 'scale(' + (1 + eased * 0.10) + ')';
+
             if (progress < 1) {
               requestAnimationFrame(tick);
             } else {
               el.textContent = formatNumber(target) + suffix;
-              el.classList.remove('counting');
+
+              // 水滴弹动: 从放大状态弹簧弹回正常大小
+              el.style.transition = 'transform 0.6s cubic-bezier(.34,1.56,.64,1)';
+              el.style.transform = '';
+              el.style.color = '';
+              el.style.textShadow = '';
+
+              setTimeout(function() {
+                el.style.transition = '';
+              }, 700);
             }
           }
           requestAnimationFrame(tick);
