@@ -1064,7 +1064,7 @@
        JAVASCRIPT — Zero dependencies, vanilla only
        ================================================ -->
   <!-- liquidGL dependencies -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="./scripts/html2canvas.min.js" defer></script>
   <script src="./scripts/liquidGL.js" defer></script>
 
   <script>
@@ -1191,7 +1191,7 @@
       var initAttempted = false;
 
       function doLiquidGL() {
-        // 先启用 CSS fallback → navbar 从第一帧就可见
+        // CSS fallback → navbar 从第一帧就可见
         nav.classList.add('glass-fallback');
 
         try {
@@ -1209,21 +1209,39 @@
             magnify: 1,
             on: {
               init: function() {
-                // WebGL 玻璃效果已渲染完成 → 移除 CSS fallback
+                // WebGL 玻璃效果已渲染完成 → 移除 CSS fallback，让出给 canvas 渲染
                 nav.classList.remove('glass-fallback');
+                // 清除 inline 样式，让 CSS 完全控制显示/隐藏
+                nav.style.background = '';
+                nav.style.backgroundColor = '';
+                nav.style.backgroundImage = '';
+                nav.style.backdropFilter = '';
+                nav.style.webkitBackdropFilter = '';
+                nav.style.transition = '';
+                nav.style.pointerEvents = '';
+                nav.style.opacity = '';
               }
             }
           });
 
-          // ★ 关键：清除 inline opacity 让 CSS .visible { opacity:1 } 生效
-          nav.style.opacity = '';
+          // liquidGL lens 构造器设了 inline background:transparent / opacity:0 / pointer-events:none
+          // CSS class 无法覆盖 inline 样式，必须手动恢复 fallback 样式
+          nav.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06))';
+          nav.style.backdropFilter = 'blur(24px) saturate(1.6)';
+          nav.style.webkitBackdropFilter = 'blur(24px) saturate(1.6)';
+          nav.style.opacity = '';  // 让 CSS .visible 控制显示
+          nav.style.pointerEvents = '';
 
           var inner = document.querySelector('.nav-inner');
           if (inner) liquidGL.registerDynamic(inner);
         } catch(e) {
           console.warn('liquidGL init failed:', e);
-          // 保留 glass-fallback，并用 CSS .visible 控制显示
+          // fallback：手动恢复样式，确保 visible 时正常显示
+          nav.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06))';
+          nav.style.backdropFilter = 'blur(24px) saturate(1.6)';
+          nav.style.webkitBackdropFilter = 'blur(24px) saturate(1.6)';
           nav.style.opacity = '';
+          nav.style.pointerEvents = '';
         }
       }
 
