@@ -507,9 +507,20 @@
       .btn-lg { padding: 14px 24px; font-size: 0.95rem; }
       .alt-dl-grid { grid-template-columns: 1fr; }
     }
+    #page-transition {
+      position: fixed; inset: 0; z-index: 99999; pointer-events: none;
+      background: #080810;
+      opacity: 0;
+      transition: opacity 0.45s cubic-bezier(.65,0,.35,1);
+    }
+    #page-transition.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
   </style>
 </head>
 <body>
+  <div id="page-transition"></div>
 
   <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
     <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
@@ -1160,6 +1171,21 @@
         startTyper(FALLBACK);
       });
   })();
+  </script>
+  <script>
+    (function(){
+      var o = document.getElementById('page-transition');
+      if (!o) return;
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('//') || href.startsWith('javascript:')) return;
+        e.preventDefault();
+        o.classList.add('active');
+        setTimeout(function() { window.location.href = href; }, 420);
+      });
+    })();
   </script>
 </body>
 </html>

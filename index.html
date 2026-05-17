@@ -312,28 +312,146 @@
     #loader {
       position: fixed; inset: 0; z-index: 9999; display: flex; flex-direction: column;
       align-items: center; justify-content: center; background: var(--bg);
-      transition: opacity 0.6s cubic-bezier(.22,1,.36,1), transform 0.6s cubic-bezier(.22,1,.36,1);
+      clip-path: circle(150% at center);
+      transition: clip-path 0.9s cubic-bezier(.65,0,.1,1), opacity 0.5s ease;
     }
-    #loader.done { opacity: 0; transform: scale(1.06); pointer-events: none; }
-    .loader-spinner {
-      width: 56px; height: 56px; border-radius: 50%; border: 2px solid transparent;
-      border-top-color: var(--primary); border-right-color: var(--accent);
-      animation: spin 1s linear infinite; margin-bottom: 32px;
+    #loader.done {
+      clip-path: circle(0% at center);
+      opacity: 0;
+      pointer-events: none;
     }
+    /* 点阵背景 */
+    .loader-grid {
+      position: absolute; inset: 0; z-index: 0; overflow: hidden;
+    }
+    .loader-grid::before {
+      content: ''; position: absolute; inset: 0;
+      background-image: radial-gradient(circle at 16px 16px, rgba(139,92,246,0.12) 1px, transparent 1px);
+      background-size: 32px 32px;
+    }
+    .loader-grid::after {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 25%, var(--bg) 65%);
+    }
+    .loader-grid-scan {
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, transparent 30%, rgba(34,211,238,0.04) 50%, transparent 70%);
+      animation: loader-scan 3s ease-in-out infinite;
+    }
+    @keyframes loader-scan {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    /* 六角形徽章 */
+    .loader-emblem {
+      position: relative; z-index: 1;
+      width: 72px; height: 72px; margin-bottom: 24px;
+    }
+    .loader-hex {
+      width: 100%; height: 100%;
+      animation: loader-hex-spin 12s linear infinite;
+    }
+    .loader-hex polygon {
+      fill: none;
+      stroke: url(#hex-grad);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 280;
+      stroke-dashoffset: 280;
+      animation: loader-hex-draw 2s ease-out 0.2s forwards;
+    }
+    @keyframes loader-hex-draw {
+      to { stroke-dashoffset: 0; }
+    }
+    @keyframes loader-hex-spin {
+      to { transform: rotate(360deg); }
+    }
+    /* 内部六角发光 */
+    .loader-hex-inner {
+      position: absolute; inset: 12px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%);
+      animation: loader-pulse 2s ease-in-out infinite;
+    }
+    @keyframes loader-pulse {
+      0%, 100% { transform: scale(0.85); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+    /* 品牌文字 */
+    .loader-brand {
+      position: relative; z-index: 1;
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(1.5rem, 3vw, 2.2rem);
+      letter-spacing: 0.35em;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+      opacity: 0;
+      transform: translateY(10px) scale(0.95);
+      animation: loader-brand-in 0.8s cubic-bezier(.16,1,.3,1) 0.3s forwards;
+    }
+    @keyframes loader-brand-in {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    /* 打字区域 */
     .loader-text {
+      position: relative; z-index: 1;
       font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.25em;
-      color: rgba(255,255,255,0.4); margin-bottom: 24px; min-height: 1.2em;
+      color: rgba(255,255,255,0.45); margin-bottom: 32px; min-height: 1.2em;
+    }
+    /* 进度条组 */
+    .loader-bar-group {
+      position: relative; z-index: 1;
+      display: flex; flex-direction: column; gap: 10px;
     }
     .loader-bar-track {
-      width: 280px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.05); overflow: hidden;
+      width: 280px; height: 3px; border-radius: 2px;
+      background: rgba(255,255,255,0.05); overflow: hidden; position: relative;
     }
     .loader-bar-fill {
-      height: 100%; width: 0%; border-radius: 2px;
+      height: 100%; width: 0%; border-radius: 2px; position: relative;
       background: linear-gradient(90deg, var(--primary), var(--accent));
       transition: width 0.08s linear;
     }
+    .loader-bar-fill::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+      animation: loader-sheen 1.2s ease-in-out infinite;
+    }
+    @keyframes loader-sheen {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .loader-info {
+      display: flex; justify-content: space-between; align-items: center;
+      font-family: var(--font-mono); font-size: 0.7rem;
+    }
     .loader-percent {
-      font-family: var(--font-mono); font-size: 0.7rem; color: rgba(255,255,255,0.25); margin-top: 12px;
+      color: rgba(255,255,255,0.35);
+    }
+    .loader-percent span {
+      color: var(--accent);
+    }
+    .loader-status {
+      color: rgba(255,255,255,0.25);
+      transition: opacity 0.3s ease;
+    }
+
+    /* ================================================
+       SECTION: PAGE TRANSITION
+       ================================================ */
+    #page-transition {
+      position: fixed; inset: 0; z-index: 99999; pointer-events: none;
+      background: var(--bg);
+      opacity: 0;
+      transition: opacity 0.45s cubic-bezier(.65,0,.35,1);
+    }
+    #page-transition.active {
+      opacity: 1;
+      pointer-events: auto;
     }
 
     /* ================================================
@@ -789,16 +907,37 @@
     <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></symbol>
     <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <linearGradient id="hex-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
   </svg>
 
   <!-- ================================================
-       LOADER
+       PAGE TRANSITION OVERLAY
+       ================================================ -->
+  <div id="page-transition"></div>
+
+  <!-- ================================================
+       LOADER — 终端引导序列
        ================================================ -->
   <div id="loader" data-liquid-ignore>
-    <div class="loader-spinner"></div>
+    <div class="loader-grid"><div class="loader-grid-scan"></div></div>
+    <div class="loader-emblem">
+      <svg class="loader-hex" viewBox="0 0 100 100">
+        <polygon points="50 5, 95 27.5, 95 72.5, 50 95, 5 72.5, 5 27.5"/>
+      </svg>
+      <div class="loader-hex-inner"></div>
+    </div>
+    <div class="loader-brand">HNUST</div>
     <p class="loader-text" id="loader-text"></p>
-    <div class="loader-bar-track"><div class="loader-bar-fill" id="loader-bar"></div></div>
-    <p class="loader-percent" id="loader-percent">0%</p>
+    <div class="loader-bar-group">
+      <div class="loader-bar-track"><div class="loader-bar-fill" id="loader-bar"></div></div>
+      <div class="loader-info">
+        <span class="loader-percent" id="loader-percent">0%</span>
+        <span class="loader-status" id="loader-status">Initializing...</span>
+      </div>
+    </div>
   </div>
 
   <!-- ================================================
@@ -1674,15 +1813,33 @@
     // ===================== LOADER =====================
     function initLoader(callback) {
       var loader = document.getElementById('loader');
+      if (PREFERS_REDUCED && loader) {
+        loader.style.display = 'none';
+        callback();
+        return;
+      }
       var barEl = document.getElementById('loader-bar');
       var textEl = document.getElementById('loader-text');
       var pctEl = document.getElementById('loader-percent');
-      if (!loader || !barEl || !textEl || !pctEl) { callback(); return; }
+      var statusEl = document.getElementById('loader-status');
+      if (!loader || !barEl || !textEl || !pctEl || !statusEl) { callback(); return; }
 
-      var fullText = 'HNUST PYTHON EXAM SYSTEM';
+      var fullText = 'INITIALIZING SYSTEM...';
+      var bootMessages = [
+        'Loading kernel modules...',
+        'Mounting file system...',
+        'Initializing Python runtime...',
+        'Connecting to database...',
+        'Loading exam engine...',
+        'Verifying integrity...',
+        'Starting services...',
+        'Ready!'
+      ];
       var progress = 0;
       var textIdx = 0;
+      var msgIdx = 0;
 
+      // Typewriter 打字效果
       var typeInterval = setInterval(function() {
         if (textIdx <= fullText.length) {
           textEl.innerHTML = fullText.slice(0, textIdx) + '<span style="animation:blink 1s step-end infinite">_</span>';
@@ -1690,28 +1847,61 @@
         } else {
           clearInterval(typeInterval);
         }
-      }, 65);
+      }, 40);
 
+      // 状态信息轮替
+      var statusInterval = setInterval(function() {
+        if (msgIdx < bootMessages.length - 1) {
+          statusEl.textContent = bootMessages[msgIdx];
+          msgIdx++;
+        } else {
+          clearInterval(statusInterval);
+        }
+      }, Math.floor(LOADER_DURATION / bootMessages.length));
+
+      // 进度条
       var progressInterval = setInterval(function() {
-        progress += Math.floor(Math.random() * 6) + 1;
+        progress += Math.floor(Math.random() * 5) + 1;
         if (progress >= 100) {
           progress = 100;
           clearInterval(progressInterval);
           clearInterval(typeInterval);
+          clearInterval(statusInterval);
           textEl.textContent = fullText;
+          statusEl.textContent = bootMessages[bootMessages.length - 1];
 
           setTimeout(function() {
+            // 触发 portal 式圆形裁切消失
             loader.classList.add('done');
             setTimeout(function() {
               loader.style.display = 'none';
               callback();
-            }, 650);
+            }, 950);
           }, 400);
         }
         var eased = easeOutExpo(progress / 100);
         barEl.style.width = (eased * 100) + '%';
         pctEl.textContent = Math.floor(progress) + '%';
       }, 55);
+    }
+
+    // ===================== PAGE TRANSITIONS =====================
+    function initPageTransitions() {
+      var overlay = document.getElementById('page-transition');
+      if (!overlay) return;
+
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('//') || href.startsWith('javascript:')) return;
+
+        e.preventDefault();
+        overlay.classList.add('active');
+        setTimeout(function() {
+          window.location.href = href;
+        }, 420);
+      });
     }
 
     // ===================== FETCH LATEST VERSION =====================
@@ -1794,6 +1984,7 @@
       initSmoothScroll();
       initVersionInfo();
       initContributors();
+      initPageTransitions();
     }
 
     if (document.readyState === 'loading') {

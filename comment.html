@@ -268,9 +268,20 @@
       .comment-card { padding: 32px 20px; }
       #tcomment .tk-replies { padding-left: 20px; }
     }
+    #page-transition {
+      position: fixed; inset: 0; z-index: 99999; pointer-events: none;
+      background: #080810;
+      opacity: 0;
+      transition: opacity 0.45s cubic-bezier(.65,0,.35,1);
+    }
+    #page-transition.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
   </style>
 </head>
 <body>
+  <div id="page-transition"></div>
 
   <!-- Background -->
   <div class="bg-orbs">
@@ -373,6 +384,21 @@
       }
     }
   })();
+  </script>
+  <script>
+    (function(){
+      var o = document.getElementById('page-transition');
+      if (!o) return;
+      document.addEventListener('click', function(e) {
+        var link = e.target.closest('a[href]');
+        if (!link) return;
+        var href = link.getAttribute('href');
+        if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('//') || href.startsWith('javascript:')) return;
+        e.preventDefault();
+        o.classList.add('active');
+        setTimeout(function() { window.location.href = href; }, 420);
+      });
+    })();
   </script>
 </body>
 </html>
