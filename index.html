@@ -189,7 +189,8 @@
       border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
     }
     .window-dots { display: flex; gap: 6px; }
-    .window-dots span { width: 10px; height: 10px; border-radius: 50%; }
+    .window-dots span { width: 10px; height: 10px; border-radius: 50%; transition: transform 0.4s cubic-bezier(.34,1.56,.64,1); }
+    .window-dots span:hover { transform: scale(1.35); }
     .window-dots .d-red { background: rgba(239,68,68,0.8); }
     .window-dots .d-yellow { background: rgba(234,179,8,0.8); }
     .window-dots .d-green { background: rgba(34,197,94,0.8); }

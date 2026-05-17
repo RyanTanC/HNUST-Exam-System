@@ -375,7 +375,8 @@
       border-bottom: 1px solid var(--border);
       user-select: none;
     }
-    .py-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .py-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: transform 0.4s cubic-bezier(.34,1.56,.64,1); }
+    .py-dot:hover { transform: scale(1.35); }
     .py-dot.r { background: #ff5f56; }
     .py-dot.y { background: #ffbd2e; }
     .py-dot.g { background: #27c93f; }
