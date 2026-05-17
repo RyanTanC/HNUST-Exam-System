@@ -1191,10 +1191,8 @@
       var initAttempted = false;
 
       function doLiquidGL() {
-        // ★ 先启用 CSS fallback 确保 navbar 从第一帧就可见
+        // 先启用 CSS fallback → navbar 从第一帧就可见
         nav.classList.add('glass-fallback');
-
-        var liquidReady = false;
 
         try {
           liquidGL({
@@ -1207,34 +1205,26 @@
             frost: 0.3,
             shadow: true,
             specular: true,
-            reveal: 'fade',
+            reveal: 'none',        // liquidGL 不控制 opacity，由 CSS .visible 管理
             magnify: 1,
             on: {
               init: function() {
-                // liquidGL reveal 动画完成 → 移除 CSS fallback
-                liquidReady = true;
+                // WebGL 玻璃效果已渲染完成 → 移除 CSS fallback
                 nav.classList.remove('glass-fallback');
               }
             }
           });
 
+          // ★ 关键：清除 inline opacity 让 CSS .visible { opacity:1 } 生效
+          nav.style.opacity = '';
+
           var inner = document.querySelector('.nav-inner');
           if (inner) liquidGL.registerDynamic(inner);
         } catch(e) {
           console.warn('liquidGL init failed:', e);
-          // 保留 glass-fallback，清除 inline opacity 让 .visible 生效
+          // 保留 glass-fallback，并用 CSS .visible 控制显示
           nav.style.opacity = '';
-          return;
         }
-
-        // ★ 安全超时：3 秒后若 liquidGL 仍未完成 reveal（如 html2canvas 失败），
-        //   清除 inline opacity，保留 glass-fallback 确保可见
-        setTimeout(function() {
-          if (!liquidReady) {
-            nav.style.opacity = '';
-            // glass-fallback 保持不动，确保有背景
-          }
-        }, 3000);
       }
 
       function initGlass() {
@@ -1243,15 +1233,17 @@
 
         if (typeof liquidGL === 'undefined') {
           // defer 脚本尚未加载 → CSS fallback 兜底，等 window.load 再试
+          // 用 setInterval 轮询代替 load 事件，因为 load 事件可能已被触发
           nav.classList.add('glass-fallback');
-          window.addEventListener('load', function onLoad() {
+          var pollTimer = setInterval(function() {
             if (typeof liquidGL !== 'undefined') {
+              clearInterval(pollTimer);
               nav.classList.remove('glass-fallback');
-              requestAnimationFrame(function() {
-                doLiquidGL();
-              });
+              doLiquidGL();
             }
-          });
+          }, 100);
+          // 10 秒上限：超过则保留 fallback
+          setTimeout(function() { clearInterval(pollTimer); }, 10000);
           return;
         }
 
