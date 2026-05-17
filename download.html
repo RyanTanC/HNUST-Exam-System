@@ -949,7 +949,15 @@
           wrapper.style.height = fh + 'px';
         });
 
-        // Zoom closes via backdrop click or Escape key
+        // Bind mouseleave after 0.4s transition completes
+        // to prevent flicker from animation-related position changes
+        setTimeout(function() {
+          if (!state || state.closing) return;
+          wrapper.addEventListener('mouseleave', function onLeave() {
+            if (!state || state.closing) return;
+            closeZoom();
+          });
+        }, 420);
       });
     });
   })();
