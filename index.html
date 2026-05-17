@@ -1189,12 +1189,15 @@
       if (!nav) return;
 
       var initAttempted = false;
-      var glassLoaded = false;
 
       function doLiquidGL() {
-        glassLoaded = true;
+        // ★ 先启用 CSS fallback 确保 navbar 从第一帧就可见
+        nav.classList.add('glass-fallback');
+
+        var liquidReady = false;
+
         try {
-          var instance = liquidGL({
+          liquidGL({
             target: '.liquidGL',
             snapshot: 'body',
             resolution: 1.5,
@@ -1206,14 +1209,32 @@
             specular: true,
             reveal: 'fade',
             magnify: 1,
+            on: {
+              init: function() {
+                // liquidGL reveal 动画完成 → 移除 CSS fallback
+                liquidReady = true;
+                nav.classList.remove('glass-fallback');
+              }
+            }
           });
 
           var inner = document.querySelector('.nav-inner');
           if (inner) liquidGL.registerDynamic(inner);
         } catch(e) {
           console.warn('liquidGL init failed:', e);
-          nav.classList.add('glass-fallback');
+          // 保留 glass-fallback，清除 inline opacity 让 .visible 生效
+          nav.style.opacity = '';
+          return;
         }
+
+        // ★ 安全超时：3 秒后若 liquidGL 仍未完成 reveal（如 html2canvas 失败），
+        //   清除 inline opacity，保留 glass-fallback 确保可见
+        setTimeout(function() {
+          if (!liquidReady) {
+            nav.style.opacity = '';
+            // glass-fallback 保持不动，确保有背景
+          }
+        }, 3000);
       }
 
       function initGlass() {
@@ -1221,12 +1242,11 @@
         initAttempted = true;
 
         if (typeof liquidGL === 'undefined') {
-          // defer 脚本尚未加载完 — 启用 CSS fallback，等 window.load 再试
+          // defer 脚本尚未加载 → CSS fallback 兜底，等 window.load 再试
           nav.classList.add('glass-fallback');
           window.addEventListener('load', function onLoad() {
             if (typeof liquidGL !== 'undefined') {
               nav.classList.remove('glass-fallback');
-              // ★ 关键: 给 html2canvas + liquidGL 一帧时间完成初始渲染
               requestAnimationFrame(function() {
                 doLiquidGL();
               });
