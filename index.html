@@ -546,35 +546,55 @@
     }
 
     /* ================================================
-       SECTION: NAVBAR
+       SECTION: NAVBAR — 液体玻璃导航栏
+       状态设计：
+         .navbar                  → liquidGL 活跃态（透明 bg，WebGL 渲染玻璃）
+         .navbar.glass-fallback   → CSS 毛玻璃兜底（liquidGL 未就绪或失败）
+         .navbar.liquidGL-active  → liquidGL 就绪标记（阻止 CSS 玻璃泄漏）
+         .navbar.visible          → 可见态（叠加在以上任意状态之上）
+       核心原则：liquidGL 接管视觉 → CSS 只控制位置/透明度过渡
        ================================================ */
     .navbar {
       position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-80px);
       z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
       opacity: 0;
-      will-change: transform, opacity, backdrop-filter;
-      /* 退出动画（visible → hidden）：缓出，平滑消失，模糊同步消退 */
-      transition: transform 0.4s cubic-bezier(.55,0,.55,1), opacity 0.3s ease, backdrop-filter 0.4s ease, -webkit-backdrop-filter 0.4s ease;
-      /* liquidGL 接管视觉渲染，但需要 CSS fallback */
+      will-change: transform, opacity;
+      /* liquidGL 活跃态：WebGL 渲染玻璃，CSS 保持透明 */
       background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
       border: none;
-      backdrop-filter: blur(0px) saturate(1);
-      -webkit-backdrop-filter: blur(0px) saturate(1);
+      box-shadow: none;
+      /* 退出动画（visible → hidden）：缓出无回弹 */
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease;
     }
-    /* ★ 修复: CSS fallback — liquidGL 未就绪时的毛玻璃（模糊由 .visible 管理，渐变无缝过渡） */
+    /* CSS 兜底毛玻璃 — liquidGL 不可用时的纯 CSS 效果 */
     .navbar.glass-fallback {
       background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
+      backdrop-filter: blur(24px) saturate(1.6);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease,
+                  backdrop-filter 0.4s ease;
+    }
+    /* liquidGL 就绪：确保 CSS 玻璃样式不泄漏（!important 覆盖 liquidGL inline） */
+    .navbar.liquidGL-active {
+      background: transparent !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+      border: none !important;
+      box-shadow: none !important;
     }
     .navbar.visible {
       transform: translateX(-50%) translateY(0);
       opacity: 1;
-      backdrop-filter: blur(24px) saturate(1.6);
-      -webkit-backdrop-filter: blur(24px) saturate(1.6);
-      /* 入场动画（hidden → visible）：弹簧过冲 + 自然回弹，模糊渐入 */
-      transition: transform 0.65s cubic-bezier(.34,1.56,.64,1), opacity 0.5s ease, backdrop-filter 0.65s ease, -webkit-backdrop-filter 0.65s ease;
+      /* 入场动画（hidden → visible）：缓出无过冲，顺滑浮现 */
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.45s ease;
     }
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
@@ -1393,88 +1413,75 @@
       var nav = document.getElementById('navbar');
       if (!nav) return;
 
-      var initAttempted = false;
+      var initialized = false;
+      var scrollRAF = false;
 
-      function doLiquidGL() {
-        // CSS fallback → navbar 从第一帧就可见
+      function initLiquidGlass() {
+        if (initialized) return;
+        initialized = true;
+
+        // CSS fallback visible immediately while liquidGL loads
         nav.classList.add('glass-fallback');
 
-        try {
-          liquidGL({
-            target: '.liquidGL',
-            snapshot: 'body',
-            resolution: 1.5,
-            refraction: 0.008,
-            bevelDepth: 0.05,
-            bevelWidth: 0.12,
-            frost: 0.3,
-            shadow: true,
-            specular: true,
-            reveal: 'none',        // liquidGL 不控制 opacity，由 CSS .visible 管理
-            magnify: 1,
-            on: {
-              init: function() {
-                // WebGL 玻璃效果已渲染完成 → 移除 CSS fallback，让出给 canvas 渲染
-                nav.classList.remove('glass-fallback');
-                // 清除 inline 样式，让 CSS 完全控制显示/隐藏
-                nav.style.background = '';
-                nav.style.backgroundColor = '';
-                nav.style.backgroundImage = '';
-                nav.style.backdropFilter = '';
-                nav.style.webkitBackdropFilter = '';
-                nav.style.transition = '';
-                nav.style.pointerEvents = '';
-                nav.style.opacity = '';
+        function applyLiquidGL() {
+          try {
+            liquidGL({
+              target: '.liquidGL',
+              snapshot: 'body',
+              resolution: 1.5,
+              refraction: 0.008,
+              bevelDepth: 0.05,
+              bevelWidth: 0.12,
+              frost: 0.3,
+              shadow: true,
+              specular: true,
+              reveal: 'none',
+              magnify: 1,
+              on: {
+                init: function() {
+                  // WebGL canvas rendering → remove CSS fallback, mark active
+                  nav.classList.remove('glass-fallback');
+                  nav.classList.add('liquidGL-active');
+
+                  // Clear ALL inline styles liquidGL set on target element
+                  nav.style.transition = '';
+                  nav.style.opacity = '';
+                  nav.style.backgroundColor = '';
+                  nav.style.backdropFilter = '';
+                  nav.style.webkitBackdropFilter = '';
+                  nav.style.backgroundImage = '';
+                  nav.style.background = '';
+                  nav.style.pointerEvents = '';
+                }
               }
-            }
-          });
+            });
 
-          // liquidGL lens 构造器设了 inline background:transparent / opacity:0 / pointer-events:none
-          // CSS class 无法覆盖 inline 样式，必须手动恢复 fallback 样式
-          nav.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06))';
-          nav.style.opacity = '';  // 让 CSS .visible 控制显示
-          nav.style.pointerEvents = '';
-
-          var inner = document.querySelector('.nav-inner');
-          if (inner) liquidGL.registerDynamic(inner);
-        } catch(e) {
-          console.warn('liquidGL init failed:', e);
-          // fallback：手动恢复样式，确保 visible 时正常显示
-          nav.style.background = 'linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06))';
-          nav.style.opacity = '';
-          nav.style.pointerEvents = '';
+            // Register .nav-inner for live content tracking
+            var inner = document.querySelector('.nav-inner');
+            if (inner) liquidGL.registerDynamic(inner);
+          } catch(e) {
+            console.warn('liquidGL init failed:', e);
+            // Keep glass-fallback, CSS handles visuals
+          }
         }
-      }
 
-      function initGlass() {
-        if (initAttempted) return;
-        initAttempted = true;
-
-        if (typeof liquidGL === 'undefined') {
-          // defer 脚本尚未加载 → CSS fallback 兜底，等 window.load 再试
-          // 用 setInterval 轮询代替 load 事件，因为 load 事件可能已被触发
-          nav.classList.add('glass-fallback');
+        if (typeof liquidGL !== 'undefined') {
+          applyLiquidGL();
+        } else {
+          // Poll for deferred script (html2canvas + liquidGL)
           var pollTimer = setInterval(function() {
             if (typeof liquidGL !== 'undefined') {
               clearInterval(pollTimer);
-              nav.classList.remove('glass-fallback');
-              doLiquidGL();
+              applyLiquidGL();
             }
           }, 100);
-          // 10 秒上限：超过则保留 fallback
           setTimeout(function() { clearInterval(pollTimer); }, 10000);
-          return;
         }
-
-        doLiquidGL();
       }
 
-      // requestAnimationFrame 节流，确保动画帧平滑
-      var scrollRAF = false;
-
-      function update() {
+      function updateVisibility() {
         if (window.scrollY > 350) {
-          if (!initAttempted) initGlass();
+          if (!initialized) initLiquidGlass();
           nav.classList.add('visible');
         } else {
           nav.classList.remove('visible');
@@ -1485,11 +1492,12 @@
       function onScroll() {
         if (!scrollRAF) {
           scrollRAF = true;
-          requestAnimationFrame(update);
+          requestAnimationFrame(updateVisibility);
         }
       }
+
       window.addEventListener('scroll', onScroll, { passive: true });
-      update();
+      updateVisibility();
     }
 
     // ★ 新增: 活跃导航链接追踪 + 滑动指示器
