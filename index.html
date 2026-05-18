@@ -453,19 +453,24 @@
     .loader-skip {
       position: absolute; top: 20px; right: 24px; z-index: 10;
       font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.2); padding: 5px 12px; border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.05);
-      background: rgba(255,255,255,0.02);
+      color: rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(0,0,0,0.3);
       cursor: pointer; transition: all 0.3s ease;
       -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     .loader-skip:hover {
       color: rgba(255,255,255,0.7);
       border-color: rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.06);
     }
     #loader.done .loader-skip {
       opacity: 0; pointer-events: none;
+    }
+    @media (max-width: 640px) {
+      .loader-skip { right: 16px; top: 16px; padding: 10px 16px; font-size: 0.75rem; }
     }
 
     /* ================================================
