@@ -555,10 +555,13 @@
        核心原则：liquidGL 接管视觉 → CSS 只控制位置/透明度过渡
        ================================================ */
     .navbar {
-      position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-80px);
+      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(-80px);
       z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
+      max-width: calc(100vw - 24px);
+      box-sizing: border-box;
       opacity: 0;
+      pointer-events: auto;
       will-change: transform, opacity;
       /* liquidGL 活跃态：WebGL 渲染玻璃，CSS 保持透明 */
       background: transparent;
@@ -599,10 +602,12 @@
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
       display: flex; align-items: center; gap: 20px;
+      max-width: 100%;
     }
-    .nav-logo { font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: var(--primary); text-shadow: 0 0 12px rgba(139,92,246,0.3); }
-    .nav-divider { width: 1px; height: 14px; background: var(--border-light); }
+    .nav-logo { flex: 0 0 auto; font-family: var(--font-display); font-weight: 800; font-size: 0.85rem; color: var(--primary); text-shadow: 0 0 12px rgba(139,92,246,0.3); }
+    .nav-divider { flex: 0 0 auto; width: 1px; height: 14px; background: var(--border-light); }
     .nav-link {
+      flex: 0 0 auto;
       font-size: 0.78rem; color: var(--text-muted);
       transition: color 0.45s cubic-bezier(.22,1,.36,1), text-shadow 0.45s cubic-bezier(.22,1,.36,1);
       position: relative; padding: 4px 2px;
@@ -946,7 +951,9 @@
       .download-card { padding: 40px 24px; }
       .btn { padding: 12px 22px; font-size: 0.88rem; }
       .version-info { flex-direction: column; gap: 8px; }
-      .navbar { padding: 10px 16px; gap: 12px; }
+      .navbar { top: max(10px, env(safe-area-inset-top)); max-width: calc(100vw - 16px); padding: 10px 12px; gap: 12px; }
+      .nav-inner { gap: 14px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; scrollbar-width: none; }
+      .nav-inner::-webkit-scrollbar { display: none; }
     }
   </style>
 </head>
@@ -1012,7 +1019,7 @@
   <!-- ================================================
        NAVBAR
        ================================================ -->
-<nav class="navbar liquidGL" id="navbar">
+<nav class="navbar liquidGL glass-fallback" id="navbar">
     <div class="nav-inner">
       <span class="nav-logo">HNUST</span>
       <span class="nav-divider"></span>
@@ -1020,8 +1027,7 @@
       <a href="#features" class="nav-link">功能</a>
       <a href="#why" class="nav-link">优势</a>
       <a href="#download" class="nav-link">下载</a>
-      <!-- 评论区入口：去掉下面这行的注释即可恢复显示 -->
-      <!-- <a href="./comment.html" class="nav-link">评论区</a> -->
+      <a href="./comment.html" class="nav-link">评论区</a>
       <div class="nav-indicator" id="navIndicator"></div>
     </div>
   </nav>
@@ -1483,8 +1489,10 @@
         if (window.scrollY > 350) {
           if (!initialized) initLiquidGlass();
           nav.classList.add('visible');
+          nav.classList.add('is-scrolled');
         } else {
           nav.classList.remove('visible');
+          nav.classList.remove('is-scrolled');
         }
         scrollRAF = false;
       }
