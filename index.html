@@ -449,9 +449,9 @@
       color: rgba(255,255,255,0.25);
       transition: opacity 0.3s ease;
     }
-    /* 跳过按钮 — 右上角，不干扰加载动画 */
+    /* 跳过按钮 — 右上角，使用 fixed 定位独立于 loader 避免移动端 clip-path 事件穿透 */
     .loader-skip {
-      position: absolute; top: 20px; right: 24px; z-index: 10;
+      position: fixed; top: 20px; right: 24px; z-index: 10000;
       font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.08em;
       color: rgba(255,255,255,0.25); padding: 8px 14px; border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.08);
@@ -460,13 +460,16 @@
       -webkit-font-smoothing: antialiased;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+      will-change: opacity;
     }
     .loader-skip:hover {
       color: rgba(255,255,255,0.7);
       border-color: rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.06);
     }
-    #loader.done .loader-skip {
+    /* 兄弟选择器：loader 完成后自动隐藏跳过按钮 */
+    #loader.done ~ .loader-skip {
       opacity: 0; pointer-events: none;
     }
     @media (max-width: 640px) {
@@ -550,7 +553,9 @@
       z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
       opacity: 0;
-      transition: transform 0.5s cubic-bezier(.22,1,.36,1), opacity 0.5s ease;
+      will-change: transform, opacity;
+      /* 退出动画（visible → hidden）：缓出，平滑消失 */
+      transition: transform 0.4s cubic-bezier(.55,0,.55,1), opacity 0.3s ease;
       /* liquidGL 接管视觉渲染，但需要 CSS fallback */
       background: transparent;
       border: none;
@@ -565,7 +570,12 @@
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
     }
-    .navbar.visible { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .navbar.visible {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      /* 入场动画（hidden → visible）：弹簧过冲 + 自然回弹 */
+      transition: transform 0.65s cubic-bezier(.34,1.56,.64,1), opacity 0.5s ease;
+    }
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
       display: flex; align-items: center; gap: 20px;
@@ -966,9 +976,9 @@
         <span class="loader-status" id="loader-status">Initializing...</span>
       </div>
     </div>
-    <!-- 跳过按钮（右上角） -->
-    <button class="loader-skip" id="loaderSkip">跳过 &gt;</button>
   </div>
+  <!-- 跳过按钮（独立于 loader，避免移动端 clip-path 事件穿透问题） -->
+  <button class="loader-skip" id="loaderSkip">跳过 &gt;</button>
 
   <!-- ================================================
        BACKGROUND LAYERS
@@ -1463,6 +1473,9 @@
         doLiquidGL();
       }
 
+      // requestAnimationFrame 节流，确保动画帧平滑
+      var scrollRAF = false;
+
       function update() {
         if (window.scrollY > 350) {
           if (!initAttempted) initGlass();
@@ -1470,8 +1483,16 @@
         } else {
           nav.classList.remove('visible');
         }
+        scrollRAF = false;
       }
-      window.addEventListener('scroll', update, { passive: true });
+
+      function onScroll() {
+        if (!scrollRAF) {
+          scrollRAF = true;
+          requestAnimationFrame(update);
+        }
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
       update();
     }
 
@@ -1856,21 +1877,27 @@
 
       // ★ 跳过按钮：点击后立即关闭 loader，直接进入页面
       var skipBtn = document.getElementById('loaderSkip');
+      function handleSkip(e) {
+        if (e.type === 'touchend') e.preventDefault();  // 防止 click 重复触发
+        // 如果 loader 已经结束则忽略
+        if (loader.classList.contains('done')) return;
+        clearInterval(typeInterval);
+        clearInterval(statusInterval);
+        clearInterval(progressInterval);
+        barEl.style.width = '100%';
+        pctEl.textContent = '100%';
+        textEl.textContent = fullText;
+        if (statusEl) statusEl.textContent = bootMessages[bootMessages.length - 1];
+        loader.classList.add('done');
+        setTimeout(function() {
+          loader.style.display = 'none';
+          callback();
+        }, 300);
+        try { navigator.vibrate(10); } catch(_) {}  // 轻微触觉反馈（可选）
+      }
       if (skipBtn) {
-        skipBtn.addEventListener('click', function() {
-          clearInterval(typeInterval);
-          clearInterval(statusInterval);
-          clearInterval(progressInterval);
-          barEl.style.width = '100%';
-          pctEl.textContent = '100%';
-          textEl.textContent = fullText;
-          if (statusEl) statusEl.textContent = bootMessages[bootMessages.length - 1];
-          loader.classList.add('done');
-          setTimeout(function() {
-            loader.style.display = 'none';
-            callback();
-          }, 300);
-        });
+        skipBtn.addEventListener('click', handleSkip);
+        skipBtn.addEventListener('touchend', handleSkip, { passive: false });
       }
 
       var fullText = 'INITIALIZING SYSTEM...';
