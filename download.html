@@ -855,109 +855,226 @@
       .catch(function() { /* 静默失败 */ });
   })();
   </script>
-  <!-- Image zoom with fly-from-thumbnail animation -->
+  <!-- Image zoom — Finite State Machine + Session Isolation -->
   <script>
   (function() {
     'use strict';
-    var state = null;
-    var zoomDisabled = true; // 页面刚加载时禁用放大
 
-    // 2秒后恢复放大功能
+    /* ==============================================================
+     * Finite State Machine: IDLE → OPENING → OPEN → CLOSING → IDLE
+     * Session isolation via monotonically increasing generation ID.
+     *
+     * Pointer tracking uses document-level pointermove (not element
+     * mouseleave) to avoid unreliability during CSS transitions.
+     * ============================================================== */
+
+    var gen = 0;            // monotonically increasing session ID
+    var state = null;       // current zoom session state
+    var zoomDisabled = true;
+
+    // --- Bootstrap: enable zoom after 2s --------------------------
     setTimeout(function() {
       zoomDisabled = false;
-      document.querySelectorAll('.gallery-img').forEach(function(img) {
-        img.style.cursor = 'zoom-in';
-      });
+      document.querySelectorAll('.gallery-img').forEach(markReady);
     }, 2000);
 
-    function closeZoom() {
+    function markReady(img) {
+      if (img.complete && img.naturalWidth > 0) {
+        img.dataset.ready = '1';
+        img.style.cursor = 'zoom-in';
+      } else {
+        img.addEventListener('load', function onLoad() {
+          img.dataset.ready = '1';
+          img.style.cursor = 'zoom-in';
+          img.removeEventListener('load', onLoad);
+        });
+      }
+    }
+
+    // --- Safe DOM removal -----------------------------------------
+    function safeRemove(el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+    }
+
+    // --- Unified cleanup (idempotent) -----------------------------
+    function cleanup() {
       if (!state) return;
-      var s = state;
-      s.closing = true;
-      // Restore gallery interaction when zoom closes
+      // Tear down all registered listeners / timers
+      for (var i = 0; i < state._cleanups.length; i++) {
+        state._cleanups[i]();
+      }
+      state._cleanups.length = 0;
+      // Remove DOM
+      safeRemove(state.backdrop);
+      safeRemove(state.wrapper);
+      // Restore gallery
+      document.querySelectorAll('.gallery-img').forEach(function(g) {
+        g.style.pointerEvents = '';
+      });
+      state = null;
+    }
+
+    // --- Centered zoom target dimensions --------------------------
+    function calcZoomRect(nw, nh) {
+      var maxW = Math.min(window.innerWidth * 0.8, 860);
+      var maxH = Math.min(window.innerHeight * 0.7, 660);
+      var ratio = nw / nh;
+      var fw = maxW, fh = fw / ratio;
+      if (fh > maxH) { fh = maxH; fw = fh * ratio; }
+      return {
+        x: (window.innerWidth - fw) / 2,
+        y: (window.innerHeight - fh) / 2,
+        w: fw, h: fh
+      };
+    }
+
+    // --- Close transition: OPEN → CLOSING → IDLE -----------------
+    function closeZoom() {
+      if (!state || state.phase === 'closing') return;
+      state.phase = 'closing';
+
+      // Restore gallery interaction immediately
       document.querySelectorAll('.gallery-img').forEach(function(g) {
         g.style.pointerEvents = '';
       });
 
-      s.backdrop.classList.remove('active');
-      var r = s.origImg.getBoundingClientRect();
-      s.wrapper.style.transition = 'all 0.25s cubic-bezier(.22,1,.36,1)';
-      s.wrapper.style.left = r.left + 'px';
-      s.wrapper.style.top = r.top + 'px';
-      s.wrapper.style.width = r.width + 'px';
-      s.wrapper.style.height = r.height + 'px';
+      state.backdrop.classList.remove('active');
 
+      // Fly back to thumbnail (read fresh rect — handles scroll/resize)
+      var r = state.thumb.getBoundingClientRect();
+      state.wrapper.style.transition = 'all 0.25s cubic-bezier(.22,1,.36,1)';
+      state.wrapper.style.left = r.left + 'px';
+      state.wrapper.style.top = r.top + 'px';
+      state.wrapper.style.width = r.width + 'px';
+      state.wrapper.style.height = r.height + 'px';
+
+      // Full cleanup after fly-back completes
+      var s = state;
       setTimeout(function() {
-        if (s.backdrop.parentNode) s.backdrop.parentNode.removeChild(s.backdrop);
-        if (s.wrapper.parentNode) s.wrapper.parentNode.removeChild(s.wrapper);
-        state = null;
+        if (state === s) cleanup();
       }, 300);
     }
 
-    // Escape key closes zoom
+    // --- Pointer tracking via document-level pointermove ----------
+    function startPointerTracking(wrapper) {
+      var timer = null;
+      function onPointerMove(e) {
+        if (!state || state.phase !== 'open') return;
+        var r = wrapper.getBoundingClientRect();
+        var inside = e.clientX >= r.left && e.clientX <= r.right &&
+                     e.clientY >= r.top && e.clientY <= r.bottom;
+        if (inside) {
+          if (timer) { clearTimeout(timer); timer = null; }
+        } else if (!timer) {
+          timer = setTimeout(closeZoom, 200);
+        }
+      }
+      document.addEventListener('pointermove', onPointerMove);
+      return function stop() {
+        document.removeEventListener('pointermove', onPointerMove);
+        if (timer) { clearTimeout(timer); timer = null; }
+      };
+    }
+
+    // --- Resize handler: keep zoomed image centered ---------------
+    function startResizeHandler(wrapper) {
+      function onResize() {
+        if (!state || state.phase !== 'open') return;
+        var t = calcZoomRect(state.thumb.naturalWidth, state.thumb.naturalHeight);
+        wrapper.style.left = t.x + 'px';
+        wrapper.style.top = t.y + 'px';
+        wrapper.style.width = t.w + 'px';
+        wrapper.style.height = t.h + 'px';
+      }
+      window.addEventListener('resize', onResize);
+      return function stop() { window.removeEventListener('resize', onResize); };
+    }
+
+    // --- Open: IDLE → OPENING → OPEN -----------------------------
+    function openZoom(thumb) {
+      if (state || zoomDisabled) return;
+      if (!thumb.dataset.ready) return;
+
+      var nw = thumb.naturalWidth, nh = thumb.naturalHeight;
+      if (nw <= 0 || nh <= 0) return;
+
+      var sessionGen = ++gen;
+      var rect = thumb.getBoundingClientRect();
+      var target = calcZoomRect(nw, nh);
+
+      // Lock gallery
+      document.querySelectorAll('.gallery-img').forEach(function(g) {
+        g.style.pointerEvents = 'none';
+      });
+
+      // Create backdrop
+      var backdrop = document.createElement('div');
+      backdrop.className = 'img-zoom-backdrop';
+
+      // Create wrapper at thumbnail position (will fly to center)
+      var wrapper = document.createElement('div');
+      wrapper.style.cssText = 'position:fixed;z-index:99999;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;transition:all 0.4s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;';
+
+      var zoomImg = document.createElement('img');
+      zoomImg.src = thumb.src;
+      zoomImg.alt = thumb.alt;
+      zoomImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:10px;corner-shape:superellipse;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:block;';
+      wrapper.appendChild(zoomImg);
+
+      document.body.appendChild(backdrop);
+      document.body.appendChild(wrapper);
+
+      // Initialize state
+      state = {
+        generation: sessionGen,
+        phase: 'opening',
+        wrapper: wrapper,
+        backdrop: backdrop,
+        thumb: thumb,
+        _cleanups: []
+      };
+
+      // Backdrop click (with session guard)
+      backdrop.addEventListener('click', function onClick() {
+        if (state && state.generation === sessionGen) closeZoom();
+      });
+
+      // Start document-level pointer tracking
+      // (quiet during OPENING phase; auto-activates when phase→'open')
+      state._cleanups.push(startPointerTracking(wrapper));
+
+      // Start resize repositioning
+      state._cleanups.push(startResizeHandler(wrapper));
+
+      // Animate in: backdrop fade + wrapper fly to center
+      requestAnimationFrame(function() {
+        if (state && state.generation === sessionGen) {
+          backdrop.classList.add('active');
+          wrapper.style.left = target.x + 'px';
+          wrapper.style.top = target.y + 'px';
+          wrapper.style.width = target.w + 'px';
+          wrapper.style.height = target.h + 'px';
+        }
+      });
+
+      // Transition to OPEN after fly-in animation completes
+      setTimeout(function() {
+        if (!state || state.generation !== sessionGen) return;
+        if (state.phase !== 'opening') return;
+        state.phase = 'open';
+      }, 420);
+    }
+
+    // --- Escape key -----------------------------------------------
     document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape' && state) closeZoom();
+      if (e.key === 'Escape') closeZoom();
     });
 
+    // --- Bind thumbnails ------------------------------------------
     document.querySelectorAll('.gallery-img').forEach(function(img) {
       img.style.cursor = 'default';
       img.addEventListener('mouseenter', function() {
-        if (state) return;
-        if (zoomDisabled) return;
-        // Prevent gallery images from re-triggering while zoom is active
-        document.querySelectorAll('.gallery-img').forEach(function(g) {
-          g.style.pointerEvents = 'none';
-        });
-
-        var rect = this.getBoundingClientRect();
-        var nw = this.naturalWidth, nh = this.naturalHeight;
-
-        // Target centered size (consistent max bounds)
-        var maxW = Math.min(window.innerWidth * 0.8, 860);
-        var maxH = Math.min(window.innerHeight * 0.7, 660);
-        var ratio = nw / nh;
-        var fw = maxW, fh = fw / ratio;
-        if (fh > maxH) { fh = maxH; fw = fh * ratio; }
-        var fx = (window.innerWidth - fw) / 2;
-        var fy = (window.innerHeight - fh) / 2;
-
-        // Backdrop
-        var backdrop = document.createElement('div');
-        backdrop.className = 'img-zoom-backdrop';
-        backdrop.addEventListener('click', closeZoom);
-        document.body.appendChild(backdrop);
-
-        // Image wrapper at thumbnail position
-        var wrapper = document.createElement('div');
-        wrapper.style.cssText = 'position:fixed;z-index:99999;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;transition:all 0.4s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;';
-
-        var zoomImg = document.createElement('img');
-        zoomImg.src = this.src;
-        zoomImg.alt = this.alt;
-        zoomImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:10px;corner-shape:superellipse;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:block;';
-        wrapper.appendChild(zoomImg);
-        document.body.appendChild(wrapper);
-
-        state = { wrapper: wrapper, backdrop: backdrop, origImg: this, closing: false };
-
-        // Animate open: backdrop fades, wrapper flies to center
-        requestAnimationFrame(function() {
-          backdrop.classList.add('active');
-          wrapper.style.left = fx + 'px';
-          wrapper.style.top = fy + 'px';
-          wrapper.style.width = fw + 'px';
-          wrapper.style.height = fh + 'px';
-        });
-
-        // Bind mouseleave after 0.4s transition completes
-        // to prevent flicker from animation-related position changes
-        setTimeout(function() {
-          if (!state || state.closing) return;
-          wrapper.addEventListener('mouseleave', function onLeave() {
-            if (!state || state.closing) return;
-            closeZoom();
-          });
-        }, 420);
+        openZoom(this);
       });
     });
   })();
