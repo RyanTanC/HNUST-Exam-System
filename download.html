@@ -527,6 +527,12 @@
     <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
     <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
     <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M3 3h8v8H3V3zm0 10h8v8H3v-8zm10-10h8v8h-8V3zm0 10h8v8h-8v-8z"/>
+    </symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.67-.81 1-1.79.9-2.83-.78.04-1.73.52-2.29 1.17C10.9 2.7 10.6 3.7 10.8 4.7c.83.06 1.63-.45 2.2-1.2z"/>
+    </symbol>
   </svg>
 
   <!-- Background -->
@@ -582,12 +588,19 @@
         </div>
 
         <div class="dl-btn-wrap">
-          <a id="dl-btn" href="#" class="dl-btn magnetic-btn" target="_blank" rel="noopener">
-            <svg class="icon icon-md"><use href="#i-download"/></svg>
-            立即下载 EXE 安装包
+          <a id="dl-btn-win" href="#" class="dl-btn magnetic-btn" target="_blank" rel="noopener">
+            <svg class="icon icon-md"><use href="#i-windows"/></svg>
+            Windows下载
           </a>
         </div>
-        <p class="dl-note" id="dl-note">Windows 系统 · 免费开源 · 自动更新</p>
+        <div class="dl-btn-wrap" style="margin-top:12px">
+          <a id="dl-btn-mac" href="#" class="dl-btn magnetic-btn" target="_blank" rel="noopener">
+            <svg class="icon icon-md"><use href="#i-apple"/></svg>
+            macOS下载
+          </a>
+        </div>
+        <p class="dl-note" id="dl-note-win">Windows 系统 · 免费开源 · 自动更新</p>
+        <p class="dl-note" id="dl-note-mac">macOS 系统 · Apple Silicon & Intel · 免费开源</p>
 
         <!-- Alternative download options -->
         <div class="alt-dl-section">
@@ -668,8 +681,10 @@
     var contentEl = document.getElementById('dl-content');
     var versionEl = document.getElementById('dl-version');
     var dateEl    = document.getElementById('dl-date');
-    var btnEl     = document.getElementById('dl-btn');
-    var noteEl    = document.getElementById('dl-note');
+    var btnWinEl  = document.getElementById('dl-btn-win');
+    var btnMacEl  = document.getElementById('dl-btn-mac');
+    var noteWinEl = document.getElementById('dl-note-win');
+    var noteMacEl = document.getElementById('dl-note-mac');
 
     function formatDate(iso) {
       if (!iso) return '—';
@@ -680,11 +695,14 @@
       loadingEl.style.display = 'none';
       errorEl.style.display = 'block';
       errorEl.textContent = msg || '无法获取版本信息，请稍后重试。';
-      // Show fallback button
+      // Show fallback buttons
       contentEl.style.display = 'block';
-      btnEl.href = FALLBACK_URL;
-      btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 前往 GitHub Releases 下载';
-      noteEl.textContent = '将跳转到 GitHub Releases 页面';
+      btnWinEl.href = FALLBACK_URL;
+      btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> 前往 GitHub Releases 下载';
+      btnMacEl.href = FALLBACK_URL;
+      btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> 前往 GitHub Releases 下载';
+      noteWinEl.textContent = '将跳转到 GitHub Releases 页面';
+      noteMacEl.textContent = '将跳转到 GitHub Releases 页面';
       versionEl.textContent = '—';
       dateEl.textContent = '—';
     }
@@ -711,6 +729,15 @@
           }
         }
 
+        // Find .dmg asset
+        var dmgAsset = null;
+        for (var i = 0; i < assets.length; i++) {
+          if (assets[i].name && assets[i].name.toLowerCase().endsWith('.dmg')) {
+            dmgAsset = assets[i];
+            break;
+          }
+        }
+
         loadingEl.style.display = 'none';
         contentEl.style.display = 'block';
 
@@ -718,14 +745,23 @@
         dateEl.textContent = date;
 
         if (exeAsset && exeAsset.browser_download_url) {
-          btnEl.href = exeAsset.browser_download_url;
-          btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 立即下载 ' + exeAsset.name;
-          noteEl.textContent = exeAsset.name + ' · ' + formatSize(exeAsset.size) + ' · 免费开源';
+          btnWinEl.href = exeAsset.browser_download_url;
+          btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
+          noteWinEl.textContent = exeAsset.name + ' · ' + formatSize(exeAsset.size) + ' · 免费开源';
         } else {
-          // No .exe found, fallback to releases page
-          btnEl.href = FALLBACK_URL;
-          btnEl.innerHTML = '<svg class="icon icon-md"><use href="#i-download"/></svg> 前往 GitHub Releases 下载';
-          noteEl.textContent = '未找到 .exe 文件，请在 Releases 页面选择对应版本';
+          btnWinEl.href = FALLBACK_URL;
+          btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> 前往 GitHub Releases 下载';
+          noteWinEl.textContent = '未找到 .exe 文件，请在 Releases 页面选择对应版本';
+        }
+
+        if (dmgAsset && dmgAsset.browser_download_url) {
+          btnMacEl.href = dmgAsset.browser_download_url;
+          btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> macOS下载';
+          noteMacEl.textContent = dmgAsset.name + ' · ' + formatSize(dmgAsset.size) + ' · 免费开源';
+        } else {
+          btnMacEl.href = FALLBACK_URL;
+          btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> 前往 GitHub Releases 下载';
+          noteMacEl.textContent = '未找到 .dmg 文件，请在 Releases 页面选择对应版本';
         }
       })
       .catch(function(err) {
