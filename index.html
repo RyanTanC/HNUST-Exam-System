@@ -557,6 +557,7 @@
        核心原则：nav-scrolled 用 !important 锁死可见性，
                  liquidGL 只影响玻璃渲染，不影响导航生死。
                  nav-at-top 没有 !important，被 nav-scrolled 自然覆盖。
+                 catch 异常时强制恢复可见，不允许任何路径卡死在隐藏态。
        ================================================ */
     .navbar {
       position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(0);
@@ -1041,6 +1042,63 @@
       <div class="nav-indicator" id="navIndicator"></div>
     </div>
   </nav>
+
+  <!-- ★ 独立导航状态机（紧贴 nav HTML 后执行，极早运行，不依赖任何外部库或主 IIFE） -->
+  <script>
+  (function() {
+    'use strict';
+    try {
+      var nav = document.getElementById('navbar');
+      if (!nav) return;
+
+      function getScrollY() {
+        return window.scrollY || window.pageYOffset ||
+          document.documentElement.scrollTop ||
+          document.body.scrollTop || 0;
+      }
+
+      var THRESHOLD = 350;
+      var ticking = false;
+
+      function update() {
+        if (getScrollY() > THRESHOLD) {
+          nav.classList.remove('nav-at-top');
+          nav.classList.add('nav-scrolled');
+        } else {
+          nav.classList.remove('nav-scrolled');
+          nav.classList.add('nav-at-top');
+        }
+        ticking = false;
+      }
+
+      window.addEventListener('scroll', function() {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      }, { passive: true });
+      window.addEventListener('resize', update, { passive: true });
+      window.addEventListener('orientationchange', function() { setTimeout(update, 150); });
+      window.addEventListener('pageshow', update);
+
+      update();
+
+      if (window.innerWidth < 400) nav.classList.add('nav-compact');
+      window.addEventListener('resize', function() {
+        if (window.innerWidth < 400) nav.classList.add('nav-compact');
+        else nav.classList.remove('nav-compact');
+      }, { passive: true });
+    } catch (_) {
+      // 异常恢复：确保导航可见，不允许任何路径卡死在隐藏态
+      var nav = document.getElementById('navbar');
+      if (nav) {
+        nav.classList.remove('nav-at-top');
+        nav.classList.remove('nav-scrolled');
+        nav.style.opacity = '1';
+        nav.style.visibility = 'visible';
+        nav.style.pointerEvents = 'auto';
+        nav.style.transform = 'translateX(-50%) translateY(0)';
+      }
+    }
+  })();
+  </script>
 
   <!-- ================================================
        MAIN
@@ -2014,41 +2072,6 @@
       init();
     }
 
-  })();
-  </script>
-
-  <!-- ★ 独立导航状态机（极早运行，不依赖任何外部库或主 IIFE） -->
-  <script>
-  (function() {
-    'use strict';
-    try {
-      var nav = document.getElementById('navbar');
-      if (!nav) return;
-      var THRESHOLD = 350;
-      var ticking = false;
-      function update() {
-        if (window.scrollY > THRESHOLD) {
-          nav.classList.remove('nav-at-top');
-          nav.classList.add('nav-scrolled');
-        } else {
-          nav.classList.remove('nav-scrolled');
-          nav.classList.add('nav-at-top');
-        }
-        ticking = false;
-      }
-      window.addEventListener('scroll', function() {
-        if (!ticking) { ticking = true; requestAnimationFrame(update); }
-      }, { passive: true });
-      window.addEventListener('resize', update, { passive: true });
-      window.addEventListener('orientationchange', function() { setTimeout(update, 150); });
-      window.addEventListener('pageshow', update);
-      update();
-      if (window.innerWidth < 400) nav.classList.add('nav-compact');
-      window.addEventListener('resize', function() {
-        if (window.innerWidth < 400) nav.classList.add('nav-compact');
-        else nav.classList.remove('nav-compact');
-      }, { passive: true });
-    } catch(_) {}
   })();
   </script>
 
