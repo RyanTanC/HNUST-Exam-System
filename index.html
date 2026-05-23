@@ -547,17 +547,13 @@
 
     /* ================================================
        SECTION: NAVBAR
-       状态设计：
-         .navbar.nav-ready         → 保命层：JS 失败时默认可见
-         .navbar.nav-at-top        → 首屏隐藏（opacity:0, translateY(-80px)）
-         .navbar.nav-scrolled      → 滚动显示，!important 确保任何冲突下可见
-         .navbar.glass-fallback    → CSS 毛玻璃兜底
-         .navbar.liquidGL-active   → liquidGL 就绪（仅覆盖视觉渲染，不碰可见性）
-         .navbar.nav-compact       → 极小屏幕紧凑布局
-       核心原则：nav-scrolled 用 !important 锁死可见性，
-                 liquidGL 只影响玻璃渲染，不影响导航生死。
-                 nav-at-top 没有 !important，被 nav-scrolled 自然覆盖。
-                 catch 异常时强制恢复可见，不允许任何路径卡死在隐藏态。
+       状态：
+         .navbar            → 基础容器，出场 transition（短，平滑）
+         .nav-at-top        → 首屏隐藏（opacity:0, translateY(-22px), scale(0.96)）
+         .nav-scrolled      → 滚动显示，入场 transition（弹簧曲线）+ 玻璃效果
+         .nav-compact       → 极小屏幕紧凑布局
+       核心原则：只使用 transition 驱动入场/出场（无 @keyframes），
+                避免 animation replay 不稳定的问题。
        ================================================ */
     .navbar {
       position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(0);
@@ -583,7 +579,7 @@
       transform: translateX(-50%) translateY(-22px) scale(0.96);
       pointer-events: none;
     }
-    /* 入场由 animation 控制(ios通知式)，!important 仅锁 pointer-events/visibility 防止干扰 */
+    /* 滚动显示：transition 统一控制入场，无 @keyframes（避免 replay 不稳定） */
     .navbar.nav-scrolled {
       opacity: 1;
       pointer-events: auto !important;
@@ -593,23 +589,11 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
       backdrop-filter: blur(24px) saturate(1.6);
       -webkit-backdrop-filter: blur(24px) saturate(1.6);
-      animation: nav-notification-in 520ms cubic-bezier(.22,1,.36,1) forwards;
-      transition: background 0.5s ease,
+      /* 入场 transition 覆盖基类 —— 弹簧曲线替代 @keyframes */
+      transition: transform 0.55s cubic-bezier(.34,1.56,.64,1),
+                  opacity 0.4s ease,
+                  background 0.5s ease,
                   backdrop-filter 0.5s ease;
-    }
-    /* ios 通知式入场 */
-    @keyframes nav-notification-in {
-      0%   { transform: translateX(-50%) translateY(-22px) scale(0.96); opacity: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
-      55%  { transform: translateX(-50%) translateY(2px) scale(1.012);  opacity: 1; box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
-      100% { transform: translateX(-50%) translateY(0) scale(1);        opacity: 1; box-shadow: 0 8px 32px rgba(0,0,0,0.4),  0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
-    }
-    /* liquidGL 就绪：只覆盖视觉渲染属性，不影响可见性 */
-    .navbar.liquidGL-active {
-      background: transparent !important;
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-      border: none !important;
-      box-shadow: none !important;
     }
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
@@ -1034,7 +1018,7 @@
   <!-- ================================================
        NAVBAR
        ================================================ -->
-<nav class="navbar liquidGL glass-fallback nav-ready" id="navbar">
+<nav class="navbar glass-fallback" id="navbar">
     <div class="nav-inner">
       <span class="nav-logo">HNUST</span>
       <span class="nav-divider"></span>
@@ -1378,10 +1362,6 @@
   <!-- ================================================
        JAVASCRIPT — Zero dependencies, vanilla only
        ================================================ -->
-  <!-- liquidGL dependencies -->
-  <script src="./scripts/html2canvas.min.js" defer></script>
-  <script src="./scripts/liquidGL.js" defer></script>
-
   <script>
   (function() {
     'use strict';
@@ -2099,53 +2079,5 @@
   })();
   </script>
 
-  <!-- ★ 独立 liquidGL 增强（纯视觉，不参与导航生死，失败完全不影响显示） -->
-  <script>
-  (function() {
-    'use strict';
-    try {
-      var nav = document.getElementById('navbar');
-      if (!nav) return;
-      function applyLiquidGL() {
-        try {
-          liquidGL({
-            target: '.liquidGL',
-            snapshot: 'body',
-            resolution: 1.5,
-            refraction: 0.008,
-            bevelDepth: 0.05,
-            bevelWidth: 0.12,
-            frost: 0.3,
-            shadow: true,
-            specular: true,
-            reveal: 'none',
-            magnify: 1,
-            on: {
-              init: function() {
-                nav.classList.remove('glass-fallback');
-                nav.classList.add('liquidGL-active');
-              }
-            }
-          });
-          var inner = document.querySelector('.nav-inner');
-          if (inner) liquidGL.registerDynamic(inner);
-        } catch(e) {
-          console.warn('liquidGL visual enhancement failed:', e);
-        }
-      }
-      if (typeof liquidGL !== 'undefined') {
-        applyLiquidGL();
-      } else {
-        var pollTimer = setInterval(function() {
-          if (typeof liquidGL !== 'undefined') {
-            clearInterval(pollTimer);
-            applyLiquidGL();
-          }
-        }, 100);
-        setTimeout(function() { clearInterval(pollTimer); }, 10000);
-      }
-    } catch(_) {}
-  })();
-  </script>
 </body>
 </html>
