@@ -1852,6 +1852,7 @@
       var loader = document.getElementById('loader');
       var loaderTimeout;
       if (PREFERS_REDUCED && loader) {
+        loader.classList.add('done');
         loader.style.display = 'none';
         callback();
         return;
@@ -1860,7 +1861,11 @@
       var textEl = document.getElementById('loader-text');
       var pctEl = document.getElementById('loader-percent');
       var statusEl = document.getElementById('loader-status');
-      if (!loader || !barEl || !textEl || !pctEl || !statusEl) { callback(); return; }
+      if (!loader || !barEl || !textEl || !pctEl || !statusEl) {
+        if (loader) loader.classList.add('done');
+        callback();
+        return;
+      }
 
       // 超时兜底：5 秒后强制释放 loader，防止 JS 异常导致永久遮罩
       loaderTimeout = setTimeout(function() {
@@ -2035,7 +2040,10 @@
       var skipLoader = location.search.indexOf('skipLoader=1') !== -1;
       if (skipLoader) {
         var loader = document.getElementById('loader');
-        if (loader) loader.style.display = 'none';
+        if (loader) {
+          loader.classList.add('done');
+          loader.style.display = 'none';
+        }
         initScrollReveal();
         initCounters();
         initTypewriter();
