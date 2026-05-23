@@ -573,20 +573,19 @@
       -webkit-backdrop-filter: none;
       border: none;
       box-shadow: none;
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease;
+      /* 出场 transition：比入场短，无 bounce */
+      transition: transform 0.3s cubic-bezier(.4,0,.2,1),
+                  opacity 0.25s ease;
     }
+    /* 首屏隐藏：ios 通知式轻缩 + 上滑 */
     .navbar.nav-at-top {
       opacity: 0;
-      transform: translateX(-50%) translateY(-80px);
+      transform: translateX(-50%) translateY(-22px) scale(0.96);
       pointer-events: none;
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease;
     }
-    /* !important 锁死可见性，任何 inline / liquidGL 都无法覆盖 */
+    /* 入场由 animation 控制(ios通知式)，!important 仅锁 pointer-events/visibility 防止干扰 */
     .navbar.nav-scrolled {
-      opacity: 1 !important;
-      transform: translateX(-50%) translateY(0) !important;
+      opacity: 1;
       pointer-events: auto !important;
       visibility: visible !important;
       background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
@@ -594,10 +593,15 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
       backdrop-filter: blur(24px) saturate(1.6);
       -webkit-backdrop-filter: blur(24px) saturate(1.6);
-      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.45s ease,
-                  background 0.5s ease,
+      animation: nav-notification-in 520ms cubic-bezier(.22,1,.36,1) forwards;
+      transition: background 0.5s ease,
                   backdrop-filter 0.5s ease;
+    }
+    /* ios 通知式入场 */
+    @keyframes nav-notification-in {
+      0%   { transform: translateX(-50%) translateY(-22px) scale(0.96); opacity: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
+      55%  { transform: translateX(-50%) translateY(2px) scale(1.012);  opacity: 1; box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
+      100% { transform: translateX(-50%) translateY(0) scale(1);        opacity: 1; box-shadow: 0 8px 32px rgba(0,0,0,0.4),  0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset; }
     }
     /* liquidGL 就绪：只覆盖视觉渲染属性，不影响可见性 */
     .navbar.liquidGL-active {
@@ -1057,14 +1061,19 @@
           document.body.scrollTop || 0;
       }
 
-      var THRESHOLD = 350;
+      var THRESHOLD_SHOW = 350;
+      var THRESHOLD_HIDE = 300;
+      var wasScrolled = getScrollY() > THRESHOLD_SHOW;
       var ticking = false;
 
       function update() {
-        if (getScrollY() > THRESHOLD) {
+        var sy = getScrollY();
+        if (sy > THRESHOLD_SHOW && !wasScrolled) {
+          wasScrolled = true;
           nav.classList.remove('nav-at-top');
           nav.classList.add('nav-scrolled');
-        } else {
+        } else if (sy < THRESHOLD_HIDE && wasScrolled) {
+          wasScrolled = false;
           nav.classList.remove('nav-scrolled');
           nav.classList.add('nav-at-top');
         }
@@ -1078,7 +1087,14 @@
       window.addEventListener('orientationchange', function() { setTimeout(update, 150); });
       window.addEventListener('pageshow', update);
 
-      update();
+      // 初始状态
+      if (wasScrolled) {
+        nav.classList.remove('nav-at-top');
+        nav.classList.add('nav-scrolled');
+      } else {
+        nav.classList.remove('nav-scrolled');
+        nav.classList.add('nav-at-top');
+      }
 
       if (window.innerWidth < 400) nav.classList.add('nav-compact');
       window.addEventListener('resize', function() {
