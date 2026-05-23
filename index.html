@@ -14,7 +14,7 @@
   <!-- ★ 修复: 加入 Outfit 作为拉丁正文字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
-  <noscript><style>#loader{display:none!important}[data-reveal]{opacity:1!important;transform:none!important}</style></noscript>
+  <noscript><style>#loader{display:none!important}[data-reveal]{opacity:1!important;transform:none!important}.navbar{opacity:1!important;transform:translateX(-50%) translateY(0)!important}.navbar.nav-scrolled{background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(8,8,16,0.7) 30%,rgba(8,8,16,0.8) 70%,rgba(34,211,238,0.06));backdrop-filter:blur(24px) saturate(1.6)}</style></noscript>
 
   <style>
     /* ================================================
@@ -546,58 +546,76 @@
     }
 
     /* ================================================
-       SECTION: NAVBAR — 液体玻璃导航栏
+       SECTION: NAVBAR
        状态设计：
-         .navbar                  → liquidGL 活跃态（透明 bg，WebGL 渲染玻璃）
-         .navbar.glass-fallback   → CSS 毛玻璃兜底（liquidGL 未就绪或失败）
-         .navbar.liquidGL-active  → liquidGL 就绪标记（阻止 CSS 玻璃泄漏）
-         .navbar.visible          → 可见态（叠加在以上任意状态之上）
-       核心原则：liquidGL 接管视觉 → CSS 只控制位置/透明度过渡
+         .navbar.nav-ready         → 始终可见（opacity:1, translateY(0)）
+         .navbar.nav-at-top        → 首屏状态：轻量透明
+         .navbar.nav-scrolled      → 滚动后：完整毛玻璃
+         .navbar.glass-fallback    → CSS 毛玻璃兜底（liquidGL 未就绪或失败时生效）
+         .navbar.liquidGL-active   → liquidGL 就绪标记（!important 覆盖 CSS 玻璃）
+         .navbar.nav-compact       → 极小屏幕紧凑布局
+       核心原则：导航默认 CSS 可见，JS 只做增强，不决定"有没有"
        ================================================ */
     .navbar {
-      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(-80px);
+      position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(0);
       z-index: 9990;
       padding: 12px 24px; border-radius: 999px;
       max-width: calc(100vw - 24px);
       box-sizing: border-box;
-      opacity: 0;
+      opacity: 1;
       pointer-events: auto;
       will-change: transform, opacity;
-      /* liquidGL 活跃态：WebGL 渲染玻璃，CSS 保持透明 */
+      /* liquidGL 活跃态：CSS 保持透明，WebGL 渲染玻璃 */
       background: transparent;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
       border: none;
       box-shadow: none;
-      /* 退出动画（visible → hidden）：缓出无回弹 */
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease;
+                  opacity 0.35s ease,
+                  background 0.5s ease,
+                  backdrop-filter 0.5s ease,
+                  box-shadow 0.5s ease,
+                  border 0.5s ease;
     }
-    /* CSS 兜底毛玻璃 — liquidGL 不可用时的纯 CSS 效果 */
-    .navbar.glass-fallback {
+    /* 首屏轻量态：半透明背景 + 低模糊 */
+    .navbar.nav-at-top {
+      background: rgba(8,8,16,0.2);
+      backdrop-filter: blur(4px) saturate(1.1);
+      -webkit-backdrop-filter: blur(4px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,0.03);
+      box-shadow: none;
+    }
+    /* 滚动后完整毛玻璃（非 liquidGL 时生效） */
+    .navbar.nav-scrolled {
       background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
       backdrop-filter: blur(24px) saturate(1.6);
       -webkit-backdrop-filter: blur(24px) saturate(1.6);
-      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease,
-                  backdrop-filter 0.4s ease;
     }
-    /* liquidGL 就绪：确保 CSS 玻璃样式不泄漏（!important 覆盖 liquidGL inline） */
+    /* glass-fallback 在首屏轻量态和滚动态之间切换 */
+    .navbar.glass-fallback.nav-at-top {
+      background: rgba(8,8,16,0.2);
+      backdrop-filter: blur(4px) saturate(1.1);
+      -webkit-backdrop-filter: blur(4px) saturate(1.1);
+      border: 1px solid rgba(255,255,255,0.03);
+      box-shadow: none;
+    }
+    .navbar.glass-fallback.nav-scrolled {
+      background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
+      backdrop-filter: blur(24px) saturate(1.6);
+      -webkit-backdrop-filter: blur(24px) saturate(1.6);
+    }
+    /* liquidGL 就绪：确保 CSS 玻璃样式不泄漏（!important 覆盖所有状态） */
     .navbar.liquidGL-active {
       background: transparent !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
       border: none !important;
       box-shadow: none !important;
-    }
-    .navbar.visible {
-      transform: translateX(-50%) translateY(0);
-      opacity: 1;
-      /* 入场动画（hidden → visible）：缓出无过冲，顺滑浮现 */
-      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.45s ease;
     }
     .nav-inner {
       position: relative; z-index: 3; pointer-events: auto;
@@ -952,6 +970,9 @@
       .btn { padding: 12px 22px; font-size: 0.88rem; }
       .version-info { flex-direction: column; gap: 8px; }
       .navbar { top: max(10px, env(safe-area-inset-top)); max-width: calc(100vw - 16px); padding: 10px 12px; gap: 12px; }
+      .navbar.nav-compact { padding: 6px 10px; gap: 8px; }
+      .navbar.nav-compact .nav-logo { font-size: 0.75rem; }
+      .navbar.nav-compact .nav-link { font-size: 0.7rem; padding: 2px 1px; }
       .nav-inner { gap: 14px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; scrollbar-width: none; }
       .nav-inner::-webkit-scrollbar { display: none; }
     }
@@ -1019,7 +1040,7 @@
   <!-- ================================================
        NAVBAR
        ================================================ -->
-<nav class="navbar liquidGL glass-fallback" id="navbar">
+<nav class="navbar liquidGL glass-fallback nav-ready nav-at-top" id="navbar">
     <div class="nav-inner">
       <span class="nav-logo">HNUST</span>
       <span class="nav-divider"></span>
@@ -1421,13 +1442,12 @@
 
       var initialized = false;
       var scrollRAF = false;
+      var SCROLL_THRESHOLD = 350;
 
+      // liquidGL 初始化（仅滚动后才触发，避免首屏额外开销）
       function initLiquidGlass() {
         if (initialized) return;
         initialized = true;
-
-        // CSS fallback visible immediately while liquidGL loads
-        nav.classList.add('glass-fallback');
 
         function applyLiquidGL() {
           try {
@@ -1445,11 +1465,8 @@
               magnify: 1,
               on: {
                 init: function() {
-                  // WebGL canvas rendering → remove CSS fallback, mark active
                   nav.classList.remove('glass-fallback');
                   nav.classList.add('liquidGL-active');
-
-                  // Clear ALL inline styles liquidGL set on target element
                   nav.style.transition = '';
                   nav.style.opacity = '';
                   nav.style.backgroundColor = '';
@@ -1461,20 +1478,16 @@
                 }
               }
             });
-
-            // Register .nav-inner for live content tracking
             var inner = document.querySelector('.nav-inner');
             if (inner) liquidGL.registerDynamic(inner);
           } catch(e) {
             console.warn('liquidGL init failed:', e);
-            // Keep glass-fallback, CSS handles visuals
           }
         }
 
         if (typeof liquidGL !== 'undefined') {
           applyLiquidGL();
         } else {
-          // Poll for deferred script (html2canvas + liquidGL)
           var pollTimer = setInterval(function() {
             if (typeof liquidGL !== 'undefined') {
               clearInterval(pollTimer);
@@ -1485,14 +1498,16 @@
         }
       }
 
-      function updateVisibility() {
-        if (window.scrollY > 350) {
+      // 状态机：nav-at-top ↔ nav-scrolled，均不改变可见性
+      function updateNavState() {
+        var isScrolled = window.scrollY > SCROLL_THRESHOLD;
+        if (isScrolled) {
+          nav.classList.remove('nav-at-top');
+          nav.classList.add('nav-scrolled');
           if (!initialized) initLiquidGlass();
-          nav.classList.add('visible');
-          nav.classList.add('is-scrolled');
         } else {
-          nav.classList.remove('visible');
-          nav.classList.remove('is-scrolled');
+          nav.classList.remove('nav-scrolled');
+          nav.classList.add('nav-at-top');
         }
         scrollRAF = false;
       }
@@ -1500,12 +1515,31 @@
       function onScroll() {
         if (!scrollRAF) {
           scrollRAF = true;
-          requestAnimationFrame(updateVisibility);
+          requestAnimationFrame(updateNavState);
         }
       }
 
+      // 多事件监听：scroll / resize / orientationchange / pageshow
       window.addEventListener('scroll', onScroll, { passive: true });
-      updateVisibility();
+      window.addEventListener('resize', onScroll, { passive: true });
+      window.addEventListener('orientationchange', function() {
+        setTimeout(onScroll, 150);
+      });
+      window.addEventListener('pageshow', onScroll);
+
+      // 首帧直接根据当前位置设置状态（支持 hash 直链 #features/#download 等）
+      updateNavState();
+
+      // 移动端紧凑布局检测
+      function checkCompact() {
+        if (window.innerWidth < 400) {
+          nav.classList.add('nav-compact');
+        } else {
+          nav.classList.remove('nav-compact');
+        }
+      }
+      checkCompact();
+      window.addEventListener('resize', checkCompact, { passive: true });
     }
 
     // ★ 新增: 活跃导航链接追踪 + 滑动指示器
@@ -1554,11 +1588,11 @@
       } else {
         window.addEventListener('load', positionIndicator, { once: true });
       }
-      // navbar visible 过渡完成后重新定位
+      // navbar 过渡完成后重新定位
       var nav = document.getElementById('navbar');
       if (nav) {
         nav.addEventListener('transitionend', function(e) {
-          if (e.propertyName === 'transform' && nav.classList.contains('visible')) {
+          if (e.propertyName === 'transform' && (nav.classList.contains('nav-scrolled') || nav.classList.contains('nav-at-top'))) {
             positionIndicator();
           }
         });
@@ -1876,6 +1910,7 @@
     // ===================== LOADER =====================
     function initLoader(callback) {
       var loader = document.getElementById('loader');
+      var loaderTimeout;
       if (PREFERS_REDUCED && loader) {
         loader.style.display = 'none';
         callback();
@@ -1887,11 +1922,8 @@
       var statusEl = document.getElementById('loader-status');
       if (!loader || !barEl || !textEl || !pctEl || !statusEl) { callback(); return; }
 
-      // ★ 跳过按钮：点击后立即关闭 loader，直接进入页面
-      var skipBtn = document.getElementById('loaderSkip');
-      function handleSkip(e) {
-        if (e.type === 'touchend') e.preventDefault();  // 防止 click 重复触发
-        // 如果 loader 已经结束则忽略
+      // 超时兜底：5 秒后强制释放 loader，防止 JS 异常导致永久遮罩
+      loaderTimeout = setTimeout(function() {
         if (loader.classList.contains('done')) return;
         clearInterval(typeInterval);
         clearInterval(statusInterval);
@@ -1905,7 +1937,27 @@
           loader.style.display = 'none';
           callback();
         }, 300);
-        try { navigator.vibrate(10); } catch(_) {}  // 轻微触觉反馈（可选）
+      }, 5000);
+
+      // ★ 跳过按钮：点击后立即关闭 loader，直接进入页面
+      var skipBtn = document.getElementById('loaderSkip');
+      function handleSkip(e) {
+        if (e.type === 'touchend') e.preventDefault();
+        if (loader.classList.contains('done')) return;
+        clearTimeout(loaderTimeout);
+        clearInterval(typeInterval);
+        clearInterval(statusInterval);
+        clearInterval(progressInterval);
+        barEl.style.width = '100%';
+        pctEl.textContent = '100%';
+        textEl.textContent = fullText;
+        if (statusEl) statusEl.textContent = bootMessages[bootMessages.length - 1];
+        loader.classList.add('done');
+        setTimeout(function() {
+          loader.style.display = 'none';
+          callback();
+        }, 300);
+        try { navigator.vibrate(10); } catch(_) {}
       }
       if (skipBtn) {
         skipBtn.addEventListener('click', handleSkip);
@@ -1958,8 +2010,8 @@
           textEl.textContent = fullText;
           statusEl.textContent = bootMessages[bootMessages.length - 1];
 
+          clearTimeout(loaderTimeout);
           setTimeout(function() {
-            // 触发 portal 式圆形裁切消失
             loader.classList.add('done');
             setTimeout(function() {
               loader.style.display = 'none';
