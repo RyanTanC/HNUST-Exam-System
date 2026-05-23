@@ -599,8 +599,7 @@
             macOS下载
           </a>
         </div>
-        <p class="dl-note" id="dl-note-win">Windows 系统 · 免费开源 · 自动更新</p>
-        <p class="dl-note" id="dl-note-mac">macOS 系统 · Apple Silicon & Intel · 免费开源</p>
+
 
         <!-- Alternative download options -->
         <div class="alt-dl-section">
@@ -683,8 +682,7 @@
     var dateEl    = document.getElementById('dl-date');
     var btnWinEl  = document.getElementById('dl-btn-win');
     var btnMacEl  = document.getElementById('dl-btn-mac');
-    var noteWinEl = document.getElementById('dl-note-win');
-    var noteMacEl = document.getElementById('dl-note-mac');
+
 
     function formatDate(iso) {
       if (!iso) return '—';
@@ -701,8 +699,6 @@
       btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> 前往 GitHub Releases 下载';
       btnMacEl.href = FALLBACK_URL;
       btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> 前往 GitHub Releases 下载';
-      noteWinEl.textContent = '将跳转到 GitHub Releases 页面';
-      noteMacEl.textContent = '将跳转到 GitHub Releases 页面';
       versionEl.textContent = '—';
       dateEl.textContent = '—';
     }
@@ -747,33 +743,22 @@
         if (exeAsset && exeAsset.browser_download_url) {
           btnWinEl.href = exeAsset.browser_download_url;
           btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
-          noteWinEl.textContent = exeAsset.name + ' · ' + formatSize(exeAsset.size) + ' · 免费开源';
         } else {
           btnWinEl.href = FALLBACK_URL;
           btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> 前往 GitHub Releases 下载';
-          noteWinEl.textContent = '未找到 .exe 文件，请在 Releases 页面选择对应版本';
         }
 
         if (dmgAsset && dmgAsset.browser_download_url) {
           btnMacEl.href = dmgAsset.browser_download_url;
           btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> macOS下载';
-          noteMacEl.textContent = dmgAsset.name + ' · ' + formatSize(dmgAsset.size) + ' · 免费开源';
         } else {
           btnMacEl.href = FALLBACK_URL;
           btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> 前往 GitHub Releases 下载';
-          noteMacEl.textContent = '未找到 .dmg 文件，请在 Releases 页面选择对应版本';
         }
       })
       .catch(function(err) {
         showError('获取版本信息失败: ' + (err.message || '网络错误'));
       });
-    }
-
-    function formatSize(bytes) {
-      if (!bytes || isNaN(bytes)) return '';
-      if (bytes < 1024) return bytes + ' B';
-      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-      return (bytes / 1048576).toFixed(1) + ' MB';
     }
 
     // Start fetching on page load
