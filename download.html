@@ -1115,6 +1115,7 @@
     var lines = [];
     var lineIdx = 0, charIdx = 0;
     var curLine = null, txtNode = null, cursorEl = null;
+    var userScrolledAway = false;
 
     /* ============== Typewriter Engine ============== */
 
@@ -1125,9 +1126,22 @@
       return s;
     }
 
+    function isNearBottom(box) {
+      return box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+    }
+
     function scrollDown() {
       var box = document.getElementById('py-body');
-      if (box) box.scrollTop = box.scrollHeight;
+      if (!box || userScrolledAway) return;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // Detect manual scrolling — if user scrolls up, stop forcing auto-scroll
+    var pyBody = document.getElementById('py-body');
+    if (pyBody) {
+      pyBody.addEventListener('scroll', function() {
+        userScrolledAway = !isNearBottom(pyBody);
+      });
     }
 
     function typeTick() {
