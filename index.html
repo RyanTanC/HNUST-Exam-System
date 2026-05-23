@@ -14,7 +14,7 @@
   <!-- ★ 修复: 加入 Outfit 作为拉丁正文字体 -->
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
-  <noscript><style>#loader{display:none!important}[data-reveal]{opacity:1!important;transform:none!important}.navbar{opacity:1!important;transform:translateX(-50%) translateY(0)!important}.navbar.nav-scrolled{background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(8,8,16,0.7) 30%,rgba(8,8,16,0.8) 70%,rgba(34,211,238,0.06));backdrop-filter:blur(24px) saturate(1.6)}</style></noscript>
+  <noscript><style>#loader{display:none!important}[data-reveal]{opacity:1!important;transform:none!important}.navbar{opacity:1!important;transform:translateX(-50%) translateY(0)!important}.navbar.glass-fallback{background:linear-gradient(135deg,rgba(139,92,246,0.08),rgba(8,8,16,0.7) 30%,rgba(8,8,16,0.8) 70%,rgba(34,211,238,0.06))!important;backdrop-filter:blur(24px) saturate(1.6)!important;border:1px solid rgba(255,255,255,0.08)!important}</style></noscript>
 
   <style>
     /* ================================================
@@ -548,13 +548,14 @@
     /* ================================================
        SECTION: NAVBAR
        状态设计：
-         .navbar.nav-ready         → 始终可见（opacity:1, translateY(0)）
-         .navbar.nav-at-top        → 首屏状态：轻量透明
-         .navbar.nav-scrolled      → 滚动后：完整毛玻璃
+         .navbar.nav-ready         → 基础可见（opacity:1, translateY(0)），JS 失败时保命
+         .navbar.nav-at-top        → 首屏隐藏（opacity:0, translateY(-80px)），JS 启动后添加
+         .navbar.nav-scrolled      → 滚动后显示 + 完整毛玻璃
          .navbar.glass-fallback    → CSS 毛玻璃兜底（liquidGL 未就绪或失败时生效）
          .navbar.liquidGL-active   → liquidGL 就绪标记（!important 覆盖 CSS 玻璃）
          .navbar.nav-compact       → 极小屏幕紧凑布局
-       核心原则：导航默认 CSS 可见，JS 只做增强，不决定"有没有"
+       核心原则：HTML 默认可见（nav-ready），JS 初始化后隐藏首屏（nav-at-top），
+                 下滑 >350px 后显示（nav-scrolled）。JS 失败时导航始终可见。
        ================================================ */
     .navbar {
       position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%) translateY(0);
@@ -571,38 +572,57 @@
       -webkit-backdrop-filter: none;
       border: none;
       box-shadow: none;
+      /* 退出动画（nav-scrolled → nav-at-top）：缓出平滑消失 */
       transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.35s ease,
-                  background 0.5s ease,
-                  backdrop-filter 0.5s ease,
-                  box-shadow 0.5s ease,
-                  border 0.5s ease;
+                  opacity 0.35s ease;
     }
-    /* 首屏轻量态：半透明背景 + 低模糊 */
+    /* 首屏隐藏态：JS 初始化后添加，导航不可见 */
     .navbar.nav-at-top {
-      background: rgba(8,8,16,0.2);
-      backdrop-filter: blur(4px) saturate(1.1);
-      -webkit-backdrop-filter: blur(4px) saturate(1.1);
-      border: 1px solid rgba(255,255,255,0.03);
+      opacity: 0;
+      transform: translateX(-50%) translateY(-80px);
+      pointer-events: none;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
       box-shadow: none;
+      /* 离开顶部的过渡由 nav-scrolled 覆盖 */
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.35s ease;
     }
-    /* 滚动后完整毛玻璃（非 liquidGL 时生效） */
+    /* 滚动后显示 + 完整毛玻璃 */
     .navbar.nav-scrolled {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
       background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
       backdrop-filter: blur(24px) saturate(1.6);
       -webkit-backdrop-filter: blur(24px) saturate(1.6);
+      /* 入场动画：弹性浮现 */
+      transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.45s ease,
+                  background 0.5s ease,
+                  backdrop-filter 0.5s ease,
+                  border 0.5s ease,
+                  box-shadow 0.5s ease;
     }
-    /* glass-fallback 在首屏轻量态和滚动态之间切换 */
+    /* glass-fallback 覆盖：保持 hidden/visible 状态 */
     .navbar.glass-fallback.nav-at-top {
-      background: rgba(8,8,16,0.2);
-      backdrop-filter: blur(4px) saturate(1.1);
-      -webkit-backdrop-filter: blur(4px) saturate(1.1);
-      border: 1px solid rgba(255,255,255,0.03);
+      opacity: 0;
+      transform: translateX(-50%) translateY(-80px);
+      pointer-events: none;
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border: none;
       box-shadow: none;
     }
     .navbar.glass-fallback.nav-scrolled {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
       background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(8,8,16,0.7) 30%, rgba(8,8,16,0.8) 70%, rgba(34,211,238,0.06));
       border: 1px solid rgba(255,255,255,0.08);
       box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.06) inset, 0 1px 0 rgba(255,255,255,0.06) inset;
@@ -610,7 +630,9 @@
       -webkit-backdrop-filter: blur(24px) saturate(1.6);
     }
     /* liquidGL 就绪：确保 CSS 玻璃样式不泄漏（!important 覆盖所有状态） */
-    .navbar.liquidGL-active {
+    .navbar.liquidGL-active,
+    .navbar.liquidGL-active.nav-at-top,
+    .navbar.liquidGL-active.nav-scrolled {
       background: transparent !important;
       backdrop-filter: none !important;
       -webkit-backdrop-filter: none !important;
@@ -1040,7 +1062,7 @@
   <!-- ================================================
        NAVBAR
        ================================================ -->
-<nav class="navbar liquidGL glass-fallback nav-ready nav-at-top" id="navbar">
+<nav class="navbar liquidGL glass-fallback nav-ready" id="navbar">
     <div class="nav-inner">
       <span class="nav-logo">HNUST</span>
       <span class="nav-divider"></span>
@@ -1444,6 +1466,9 @@
       var scrollRAF = false;
       var SCROLL_THRESHOLD = 350;
 
+      // JS 初始化：添加 nav-at-top 隐藏导航（HTML 只有 nav-ready，JS 失败时可见）
+      nav.classList.add('nav-at-top');
+
       // liquidGL 初始化（仅滚动后才触发，避免首屏额外开销）
       function initLiquidGlass() {
         if (initialized) return;
@@ -1498,7 +1523,7 @@
         }
       }
 
-      // 状态机：nav-at-top ↔ nav-scrolled，均不改变可见性
+      // 状态机：nav-at-top（隐藏）↔ nav-scrolled（显示 + 毛玻璃）
       function updateNavState() {
         var isScrolled = window.scrollY > SCROLL_THRESHOLD;
         if (isScrolled) {
