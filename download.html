@@ -83,9 +83,50 @@
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
 
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+    /* Hide native page scrollbar */
+    html { scrollbar-width: none; -ms-overflow-style: none; }
+    html::-webkit-scrollbar { display: none; }
+    body { scrollbar-width: none; -ms-overflow-style: none; }
+    body::-webkit-scrollbar { display: none; }
+
+    /* Custom global scrollbar */
+    .global-scroll-track {
+      position: fixed; right: 0; top: 0; bottom: 0;
+      width: 28px; z-index: 9990;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 14px, transparent 14px);
+    }
+    .global-scroll-thumb {
+      position: absolute; top: 0; right: 10px; width: 8px;
+      background: linear-gradient(180deg, var(--primary), #a78bfa);
+      border-radius: 8px; cursor: pointer;
+      transition:
+        width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        right 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        background 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        opacity 0.4s ease;
+      pointer-events: auto;
+      box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15);
+      opacity: 0.6;
+      will-change: transform;
+      touch-action: none;
+    }
+    .global-scroll-track:hover .global-scroll-thumb,
+    .global-scroll-thumb:hover {
+      opacity: 1;
+      width: 10px;
+      right: 8px;
+      background: linear-gradient(180deg, #c084fc, #a78bfa);
+      box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.35), 0 0 32px rgba(var(--primary-rgb), 0.1);
+    }
+    .global-scroll-thumb:active,
+    .global-scroll-thumb.grabbed {
+      width: 16px;
+      right: 4px;
+      background: linear-gradient(180deg, #d8b4fe, #c084fc);
+      box-shadow: 0 0 24px rgba(var(--primary-rgb), 0.6), 0 0 48px rgba(var(--primary-rgb), 0.2);
+    }
 
     /* Background */
     .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
@@ -387,35 +428,17 @@
     .py-body {
       padding: 16px 20px; max-height: 440px;
       overflow-y: auto; position: relative;
-      scrollbar-width: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.2) transparent;
     }
-    .py-body::-webkit-scrollbar { display: none; }
-    .py-scrollbar-track {
-      position: absolute; right: 0; top: 0; bottom: 0;
-      width: 12px; z-index: 5;
-      pointer-events: none;
+    .py-body::-webkit-scrollbar { width: 6px; }
+    .py-body::-webkit-scrollbar-track { background: transparent; }
+    .py-body::-webkit-scrollbar-thumb {
+      background: rgba(255,255,255,0.2);
+      border-radius: 8px;
     }
-    .py-scrollbar-thumb {
-      position: absolute; right: 4px; width: 4px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 4px; cursor: pointer;
-      transition:
-        width 0.35s cubic-bezier(0.34,1.56,0.64,1),
-        right 0.35s cubic-bezier(0.34,1.56,0.64,1),
-        background 0.25s ease,
-        box-shadow 0.35s cubic-bezier(0.34,1.56,0.64,1);
-      pointer-events: auto;
-    }
-    .py-scrollbar-thumb:hover {
-      width: 8px; right: 2px;
-      background: #c084fc;
-      box-shadow: 2px 0 14px -2px rgba(192,132,252,0.5);
-    }
-    .py-scrollbar-thumb:active,
-    .py-scrollbar-thumb.grabbed {
-      width: 12px; right: 0;
-      background: #d8b4fe;
-      box-shadow: 3px 0 20px -2px rgba(192,132,252,0.7);
+    .py-body::-webkit-scrollbar-thumb:hover {
+      background: rgba(192,132,252,0.6);
     }
     .py-line {
       white-space: pre-wrap; word-wrap: break-word;
@@ -568,6 +591,9 @@
     <div class="orb orb-2"></div>
   </div>
   <div id="cursor-glow"></div>
+  <div class="global-scroll-track" id="global-scroll-track">
+    <div class="global-scroll-thumb" id="global-scroll-thumb"></div>
+  </div>
 
   <div class="page-wrapper">
 
@@ -679,7 +705,6 @@
         </div>
         <div class="py-body" id="py-body">
           <div id="py-output"></div>
-          <div class="py-scrollbar-track"><div class="py-scrollbar-thumb" id="py-scroll-thumb"></div></div>
         </div>
       </div>
     </div>
@@ -1166,52 +1191,10 @@
 
     // Detect manual scrolling — if user scrolls up, stop forcing auto-scroll
     var pyBody = document.getElementById('py-body');
-    var scrollThumb = document.getElementById('py-scroll-thumb');
     if (pyBody) {
       pyBody.addEventListener('scroll', function() {
         userScrolledAway = !isNearBottom(pyBody);
-        updateScrollThumb();
-      });
-    }
-
-    /* ============== Custom Scrollbar ============== */
-
-    function updateScrollThumb() {
-      if (!pyBody || !scrollThumb) return;
-      var ratio = pyBody.clientHeight / pyBody.scrollHeight;
-      var thumbH = Math.max(20, ratio * pyBody.clientHeight);
-      var thumbT = (pyBody.scrollTop / (pyBody.scrollHeight - pyBody.clientHeight)) * (pyBody.clientHeight - thumbH);
-      scrollThumb.style.height = thumbH + 'px';
-      scrollThumb.style.top = thumbT + 'px';
-    }
-
-    if (pyBody && scrollThumb) {
-      pyBody.addEventListener('scroll', updateScrollThumb);
-      window.addEventListener('resize', updateScrollThumb);
-      updateScrollThumb();
-
-      // Mouse drag on thumb
-      var dragging = false, startY = 0, startScrollTop = 0;
-      scrollThumb.addEventListener('mousedown', function(e) {
-        dragging = true;
-        startY = e.clientY;
-        startScrollTop = pyBody.scrollTop;
-        scrollThumb.classList.add('grabbed');
-        e.preventDefault();
-      });
-      document.addEventListener('mousemove', function(e) {
-        if (!dragging) return;
-        var ratio = pyBody.clientHeight / pyBody.scrollHeight;
-        var delta = (e.clientY - startY) / ratio;
-        pyBody.scrollTop = startScrollTop + delta;
-        e.preventDefault();
-      });
-      document.addEventListener('mouseup', function() {
-        if (dragging) {
-          dragging = false;
-          scrollThumb.classList.remove('grabbed');
-        }
-      });
+      }, { passive: true });
     }
 
     function typeTick() {
@@ -1436,6 +1419,122 @@
         setTimeout(function() { window.location.href = href; }, 420);
       });
     })();
+  </script>
+
+  <!-- Global custom scrollbar (production-grade) -->
+  <script>
+  (function() {
+    'use strict';
+    var track = document.getElementById('global-scroll-track');
+    var thumb = document.getElementById('global-scroll-thumb');
+    if (!track || !thumb) return;
+
+    var vw = window;
+    var doc = document.documentElement;
+
+    // --- Shared state ---
+    var pending = false;
+    var dragState = null;
+
+    // --- rAF-batched update (passive scroll updates + after drag sync) ---
+    function scheduleUpdate() {
+      if (pending || dragState) return;
+      pending = true;
+      requestAnimationFrame(function() {
+        pending = false;
+        var vh = vw.innerHeight;
+        var sh = doc.scrollHeight;
+        var sb = sh - vh;
+        if (sb <= 0) { thumb.style.display = 'none'; return; }
+        thumb.style.display = '';
+        var thumbH = Math.max(30, (vh / sh) * vh);
+        var maxTop = track.clientHeight - thumbH;
+        thumb.style.height = thumbH + 'px';
+        thumb.style.transform = 'translateY(' + ((vw.scrollY / sb) * maxTop) + 'px)';
+      });
+    }
+
+    // --- Track click to jump ---
+    function onTrackClick(e) {
+      if (e.target === thumb) return;
+      var rect = track.getBoundingClientRect();
+      var clickRatio = (e.clientY - rect.top) / rect.height;
+      var sb = doc.scrollHeight - vw.innerHeight;
+      vw.scrollTo({ top: clickRatio * sb, behavior: 'smooth' });
+    }
+
+    // --- Unified pointer drag (page + thumb update in lockstep) ---
+    function onPointerDown(e) {
+      if (e.target !== thumb) return;
+      e.preventDefault();
+      thumb.setPointerCapture(e.pointerId);
+      thumb.classList.add('grabbed');
+      thumb.style.transition = 'none';
+      var vh = vw.innerHeight, sh = doc.scrollHeight;
+      var sb = sh - vh;
+      var thumbH = Math.max(30, (vh / sh) * vh);
+      var maxTop = track.clientHeight - thumbH;
+      dragState = {
+        pointerId: e.pointerId,
+        startY: e.clientY,
+        startScroll: vw.scrollY,
+        ratio: sb > 0 ? sb / maxTop : 1,
+        maxTop: maxTop,
+        thumbH: thumbH,
+        maxScroll: sb
+      };
+    }
+
+    function onPointerMove(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      e.preventDefault();
+
+      // Both page scroll and thumb position derived from pointer delta — same frame, no offset
+      var targetScroll = dragState.startScroll + (e.clientY - dragState.startY) * dragState.ratio;
+      if (targetScroll > dragState.maxScroll) targetScroll = dragState.maxScroll;
+      if (targetScroll < 0) targetScroll = 0;
+
+      vw.scrollTo(0, targetScroll);
+
+      thumb.style.height = dragState.thumbH + 'px';
+      thumb.style.transform = 'translateY(' + (dragState.maxScroll > 0 ? (targetScroll / dragState.maxScroll) * dragState.maxTop : 0) + 'px)';
+    }
+
+    function onPointerUp(e) {
+      if (!dragState || e.pointerId !== dragState.pointerId) return;
+      thumb.releasePointerCapture(dragState.pointerId);
+      thumb.classList.remove('grabbed');
+      thumb.style.transition = ''; // restore CSS transitions
+      dragState = null;
+      scheduleUpdate(); // final sync
+    }
+
+    // --- Wheel on track (page up/down) ---
+    function onTrackWheel(e) {
+      if (e.target === thumb) return;
+      e.preventDefault();
+      var step = vw.innerHeight * 0.6;
+      vw.scrollBy({ top: e.deltaY > 0 ? step : -step, behavior: 'smooth' });
+    }
+
+    // --- ResizeObserver (no layout thrash) ---
+    var ro = new ResizeObserver(scheduleUpdate);
+    ro.observe(track);
+
+    // --- Bind events ---
+    track.addEventListener('click', onTrackClick);
+    track.addEventListener('wheel', onTrackWheel, { passive: false });
+    thumb.addEventListener('pointerdown', onPointerDown);
+    vw.addEventListener('pointermove', onPointerMove);
+    vw.addEventListener('pointerup', onPointerUp);
+    vw.addEventListener('pointercancel', onPointerUp);
+
+    // Scroll → schedule rAF (passive for perf; skipped during drag)
+    vw.addEventListener('scroll', scheduleUpdate, { passive: true });
+
+    // Init
+    scheduleUpdate();
+  })();
   </script>
 </body>
 </html>
