@@ -3,18 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="HNUST 计算机考试仿真平台 — 管理后台">
+  <meta name="description" content="HNUST 计算机考试仿真平台 — 评论管理面板">
   <meta name="theme-color" content="#080810">
   <link rel="icon" type="image/png" href="./images/favicon.png">
   <link rel="apple-touch-icon" href="./images/favicon.png">
-  <title>管理后台 — HNUST 计算机考试仿真平台</title>
+  <title>管理面板 — HNUST 计算机考试仿真平台</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="./js/supabase-config.js"></script>
+
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC'), local('PingFangSC-Regular'),
+           url('./fonts/PingFangRegular.ttf') format('truetype');
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Medium'), local('PingFangSC-Medium'),
+           url('./fonts/PingFangMedium.ttf') format('truetype');
+      font-weight: 500; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: 'PingFang SC';
+      src: local('PingFang SC Semibold'), local('PingFangSC-Semibold'),
+           url('./fonts/PingFangBold.ttf') format('truetype');
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
     :root {
       --bg: #080810;
       --surface: rgba(255,255,255,0.03);
@@ -22,110 +43,852 @@
       --border-light: rgba(255,255,255,0.1);
       --primary: #8b5cf6;
       --primary-rgb: 139,92,246;
+      --accent: #22d3ee;
+      --accent-rgb: 34,211,238;
       --text: #f0ece4;
       --text-muted: rgba(240,236,228,0.55);
       --text-dim: rgba(240,236,228,0.25);
+      --green: #86efac;
+      --yellow: #fde047;
+      --red: #f87171;
       --font-display: 'Syne', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
       --font-body: 'Outfit', 'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     }
-    html { -webkit-font-smoothing: antialiased; }
+
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; scrollbar-width: none; -ms-overflow-style: none; }
+    html::-webkit-scrollbar { display: none; }
     body {
       background: var(--bg); color: var(--text); font-family: var(--font-body);
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
+      overflow-x: hidden; line-height: 1.6;
+      font-synthesis: none; text-rendering: optimizeLegibility;
+      min-height: 100vh;
+      scrollbar-width: none; -ms-overflow-style: none;
     }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+    body::-webkit-scrollbar { display: none; }
+    a { color: inherit; text-decoration: none; }
+    button { border: none; background: none; font: inherit; color: inherit; cursor: pointer; }
+    img { max-width: 100%; display: block; }
 
-    .card {
-      max-width: 420px; width: 90%;
-      background: var(--surface);
-      border: 1px solid var(--border-light);
-      border-radius: 24px; padding: 48px 36px;
-      text-align: center;
-      backdrop-filter: blur(12px);
-      animation: card-float-in 0.8s cubic-bezier(.16,1,.3,1) both;
-      position: relative;
+    body::after {
+      content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 10000; opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     }
-    .card h1 {
-      font-family: var(--font-display); font-weight: 700;
-      font-size: 1.3rem; margin-bottom: 8px;
+
+    .bg-orbs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .orb { position: absolute; border-radius: 50%; filter: blur(80px); will-change: transform; }
+    .orb-1 {
+      width: 600px; height: 600px; top: -10%; right: -10%;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.2) 0%, transparent 70%);
+      animation: orb-float-1 20s ease-in-out infinite;
     }
-    .card p {
-      color: var(--text-muted); font-size: 0.88rem;
-      margin-bottom: 28px; line-height: 1.6;
+    .orb-2 {
+      width: 500px; height: 500px; bottom: -5%; left: -10%;
+      background: radial-gradient(circle, rgba(var(--accent-rgb), 0.12) 0%, transparent 70%);
+      animation: orb-float-2 25s ease-in-out infinite;
     }
-    .admin-btn {
+
+    #cursor-glow {
+      position: fixed; width: 400px; height: 400px; border-radius: 50%;
+      pointer-events: none; z-index: 1; will-change: transform;
+      background: radial-gradient(circle, rgba(var(--primary-rgb), 0.1) 0%, transparent 70%);
+      filter: blur(60px); transform: translate(-500px, -500px);
+    }
+    @media (hover: none) { #cursor-glow { display: none; } }
+
+    .global-scroll-track {
+      position: fixed; right: 0; top: 0; bottom: 0;
+      width: 28px; z-index: 9990; pointer-events: none;
+      background: linear-gradient(90deg, transparent 10px, rgba(255,255,255,0.02) 10px, rgba(255,255,255,0.02) 14px, transparent 14px);
+    }
+    .global-scroll-thumb {
+      position: absolute; top: 0; right: 10px; width: 8px;
+      background: linear-gradient(180deg, var(--primary), #a78bfa);
+      border-radius: 8px; cursor: pointer;
+      transition: width 0.4s cubic-bezier(0.22,1,0.36,1), right 0.4s cubic-bezier(0.22,1,0.36,1), background 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1), opacity 0.4s ease;
+      pointer-events: auto;
+      box-shadow: 0 0 6px rgba(var(--primary-rgb), 0.15);
+      opacity: 0.6; will-change: transform; touch-action: none;
+    }
+    .global-scroll-track:hover .global-scroll-thumb,
+    .global-scroll-thumb:hover { opacity: 1; width: 10px; right: 8px; background: linear-gradient(180deg, #c084fc, #a78bfa); box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.35), 0 0 32px rgba(var(--primary-rgb), 0.1); }
+    .global-scroll-thumb:active,
+    .global-scroll-thumb.grabbed { width: 16px; right: 4px; background: linear-gradient(180deg, #d8b4fe, #c084fc); box-shadow: 0 0 24px rgba(var(--primary-rgb), 0.6), 0 0 48px rgba(var(--primary-rgb), 0.2); }
+
+    @keyframes orb-float-1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(50px,-40px) scale(1.08); } 66% { transform: translate(-30px,30px) scale(0.95); } }
+    @keyframes orb-float-2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-40px,30px) scale(0.92); } 66% { transform: translate(30px,-40px) scale(1.08); } }
+    @keyframes fade-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes modal-in { from { opacity: 0; transform: scale(0.92) translateY(20px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes slide-down { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+
+    .page-wrapper {
+      max-width: 960px; margin: 0 auto;
+      padding: 80px 24px 100px; position: relative; z-index: 2;
+      min-height: 100vh;
+    }
+
+    /* === Back Link === */
+    .back-link {
       display: inline-flex; align-items: center; gap: 8px;
-      padding: 14px 32px; border-radius: 999px;
-      font-weight: 500; font-size: 0.95rem;
+      font-family: var(--font-mono); font-size: 0.82rem;
+      color: var(--text-muted); transition: color 0.3s ease, transform 0.3s ease;
+      padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border);
+      background: var(--surface); margin-bottom: 32px;
+    }
+    .back-link:hover { color: var(--primary); transform: translateX(-4px); border-color: rgba(var(--primary-rgb), 0.3); }
+    .back-link svg { width: 16px; height: 16px; }
+
+    /* === Nickname Modal === */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 99995;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.4s cubic-bezier(.22,1,.36,1);
+    }
+    .modal-overlay.active { opacity: 1; pointer-events: auto; }
+    .modal-card {
+      background: rgba(20,18,30,0.92);
+      border: 1px solid var(--border-light);
+      border-radius: 24px; padding: 40px 36px;
+      max-width: 420px; width: 90%;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+      transform: scale(0.92) translateY(20px);
+      transition: transform 0.4s cubic-bezier(.34,1.56,.64,1);
+      position: relative; overflow: hidden;
+    }
+    .modal-card::before {
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(circle at 50% 0%, rgba(var(--primary-rgb), 0.12), transparent 60%);
+    }
+    .modal-overlay.active .modal-card { transform: scale(1) translateY(0); }
+    .modal-card > * { position: relative; z-index: 1; }
+    .modal-card h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.4rem; margin-bottom: 8px; }
+    .modal-card p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px; }
+    .modal-input {
+      width: 100%; padding: 14px 18px; border-radius: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      font-family: var(--font-body); font-size: 1rem; color: var(--text);
+      outline: none; transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+    .modal-input:focus { border-color: rgba(var(--primary-rgb), 0.4); box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.08); }
+    .modal-input::placeholder { color: var(--text-dim); }
+    .modal-input.error { border-color: rgba(248,113,113,0.4); }
+    .modal-error { font-size: 0.8rem; color: var(--red); min-height: 1.4em; margin-top: 8px; font-family: var(--font-mono); }
+    .modal-btn {
+      width: 100%; margin-top: 16px; padding: 14px;
+      border-radius: 12px; font-size: 1rem; font-weight: 600;
       background: linear-gradient(135deg, var(--primary), #7c3aed);
-      color: #fff; text-decoration: none;
+      color: #fff;
       box-shadow: 0 4px 24px rgba(var(--primary-rgb), 0.3);
       transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease;
     }
-    .admin-btn:hover { transform: scale(1.05); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
-    .admin-btn:active { transform: scale(0.97); }
+    .modal-btn:hover { transform: scale(1.02); box-shadow: 0 8px 32px rgba(var(--primary-rgb), 0.5); }
+    .modal-btn:active { transform: scale(0.97); }
 
-    .back-link {
+    /* === Page Header === */
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px; flex-wrap: wrap; gap: 16px;
+    }
+    .page-title {
+      font-family: var(--font-display); font-weight: 800;
+      font-size: clamp(1.3rem, 2.5vw + 0.3rem, 1.8rem);
+    }
+    .page-title small { font-weight: 400; font-size: 0.7em; color: var(--text-dim); font-family: var(--font-mono); }
+
+    /* === Stats Bar === */
+    .stats-bar {
+      display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 28px;
+    }
+    .stat-card {
+      flex: 1; min-width: 120px;
+      padding: 18px 20px; border-radius: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      backdrop-filter: blur(8px); text-align: center;
+      animation: fade-in 0.5s cubic-bezier(.22,1,.36,1) both;
+    }
+    .stat-card .num {
+      font-family: var(--font-display); font-weight: 700;
+      font-size: 1.6rem; line-height: 1.2;
+    }
+    .stat-card .lbl {
+      font-family: var(--font-mono); font-size: 0.7rem;
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-top: 4px;
+    }
+    .stat-card.total .num { color: var(--primary); }
+    .stat-card.active .num { color: var(--green); }
+    .stat-card.deleted .num { color: var(--red); }
+
+    /* === Toolbar === */
+    .toolbar {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .toolbar .btn {
       display: inline-flex; align-items: center; gap: 6px;
-      margin-top: 24px; font-size: 0.82rem;
-      color: var(--text-dim); text-decoration: none;
-      transition: color 0.3s ease;
+      padding: 10px 20px; border-radius: 999px;
+      font-weight: 500; font-size: 0.85rem; font-family: var(--font-body);
+      transition: transform 0.25s cubic-bezier(.175,.885,.32,1.275), box-shadow 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+      white-space: nowrap;
     }
-    .back-link:hover { color: var(--primary); }
+    .toolbar .btn:hover { transform: scale(1.04); }
+    .toolbar .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #7c3aed);
+      color: #fff; box-shadow: 0 4px 20px rgba(var(--primary-rgb), 0.2);
+    }
+    .btn-primary:hover { box-shadow: 0 6px 28px rgba(var(--primary-rgb), 0.4); }
+    .btn-outline {
+      border: 1px solid var(--border-light);
+      background: var(--surface); color: var(--text-muted);
+      backdrop-filter: blur(8px);
+    }
+    .btn-outline:hover { border-color: rgba(var(--primary-rgb), 0.3); background: rgba(var(--primary-rgb), 0.05); color: var(--text); }
+    .btn-danger {
+      border: 1px solid rgba(248,113,113,0.2);
+      background: rgba(248,113,113,0.06); color: var(--red);
+    }
+    .btn-danger:hover { border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.1); }
 
-    .lock-icon { font-size: 2.4rem; margin-bottom: 16px; display: block; }
-
-    @keyframes card-float-in {
-      0% { opacity: 0; transform: translateY(30px) scale(0.92); filter: blur(8px); }
-      100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    /* === Filter Tabs === */
+    .filter-tabs {
+      display: flex; gap: 4px; background: rgba(255,255,255,0.02);
+      border-radius: 12px; padding: 4px; border: 1px solid var(--border);
+    }
+    .filter-tab {
+      padding: 8px 18px; border-radius: 8px;
+      font-family: var(--font-mono); font-size: 0.78rem;
+      color: var(--text-dim); transition: all 0.3s ease;
+    }
+    .filter-tab:hover { color: var(--text-muted); }
+    .filter-tab.active {
+      background: rgba(var(--primary-rgb), 0.12);
+      color: var(--primary); box-shadow: 0 2px 8px rgba(var(--primary-rgb), 0.08);
     }
 
-    #page-transition {
-      position: fixed; inset: 0; z-index: 99999; pointer-events: none;
-      background: #080810;
-      opacity: 0;
-      transition: opacity 0.45s cubic-bezier(.65,0,.35,1);
+    /* === Comment Table === */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border-light);
+      border-radius: 20px; overflow: hidden;
+      backdrop-filter: blur(12px);
+      animation: fade-in 0.6s cubic-bezier(.22,1,.36,1) 0.1s both;
     }
-    #page-transition.active {
-      opacity: 1;
+    .table-wrap table {
+      width: 100%; border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+    .table-wrap thead {
+      background: rgba(255,255,255,0.02);
+      border-bottom: 1px solid var(--border);
+    }
+    .table-wrap th {
+      padding: 14px 16px; text-align: left;
+      font-family: var(--font-mono); font-size: 0.72rem;
+      color: var(--text-dim); text-transform: uppercase;
+      letter-spacing: 0.06em; font-weight: 500;
+    }
+    .table-wrap td {
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    .table-wrap tr:last-child td { border-bottom: none; }
+    .table-wrap tr:hover td { background: rgba(255,255,255,0.01); }
+
+    .col-status { width: 70px; }
+    .col-nick { width: 100px; }
+    .col-content { min-width: 200px; }
+    .col-time { width: 150px; }
+    .col-ip { width: 120px; }
+    .col-reply { width: 60px; text-align: center; }
+    .col-actions { width: 130px; }
+
+    .status-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+      white-space: nowrap;
+    }
+    .status-badge.active {
+      background: rgba(134,239,172,0.08);
+      color: var(--green); border: 1px solid rgba(134,239,172,0.15);
+    }
+    .status-badge.deleted {
+      background: rgba(248,113,113,0.08);
+      color: var(--red); border: 1px solid rgba(248,113,113,0.15);
+    }
+
+    .comment-content { word-break: break-word; line-height: 1.6; }
+    .comment-content.deleted-text { color: var(--text-dim); font-style: italic; }
+
+    .td-actions {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .td-actions .action-btn {
+      padding: 4px 10px; border-radius: 6px;
+      font-family: var(--font-mono); font-size: 0.7rem;
+      border: 1px solid var(--border);
+      transition: all 0.25s ease;
+    }
+    .action-btn.restore { color: var(--green); }
+    .action-btn.restore:hover { border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.06); }
+    .action-btn.delete-perm { color: var(--red); }
+    .action-btn.delete-perm:hover { border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.06); }
+
+    .no-comments {
+      text-align: center; padding: 48px 24px;
+      color: var(--text-dim); font-size: 0.9rem;
+    }
+
+    /* === Toast === */
+    .toast-container {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      z-index: 99999; pointer-events: none;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    .toast {
+      padding: 12px 24px; border-radius: 12px;
+      font-size: 0.85rem; font-family: var(--font-mono);
+      background: rgba(20,18,30,0.92);
+      border: 1px solid var(--border-light);
+      backdrop-filter: blur(12px);
+      color: var(--text);
       pointer-events: auto;
+      animation: slide-down 0.3s cubic-bezier(.22,1,.36,1) both;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
+    .toast.error { border-color: rgba(248,113,113,0.3); color: var(--red); }
+    .toast.success { border-color: rgba(134,239,172,0.3); color: var(--green); }
 
-    @media (max-width: 640px) {
-      .card { padding: 36px 24px; }
+    @media (max-width: 768px) {
+      .page-wrapper { padding: 60px 16px 80px; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .stats-bar { flex-direction: column; }
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .table-wrap { overflow-x: auto; }
+      .table-wrap table { min-width: 600px; }
+      .modal-card { padding: 28px 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
   </style>
 </head>
 <body>
-  <div id="page-transition"></div>
-  <div class="card">
-    <span class="lock-icon">🔐</span>
-    <h1>管理后台</h1>
-    <p>评论审核、删除、回复等管理操作<br>请在 Twikoo 管理面板中完成</p>
-    <a href="https://twikoo-vercel-jaccox599-ryantancs-projects.vercel.app/admin" class="admin-btn" target="_blank" rel="noopener">
-      前往管理面板
-    </a>
-    <br>
-    <a href="./index.html?skipLoader=1" class="back-link">← 返回首页</a>
+
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
   </div>
+  <div id="cursor-glow"></div>
+  <div class="global-scroll-track"><div class="global-scroll-thumb" id="global-scroll-thumb"></div></div>
+
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+    <symbol id="i-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  </svg>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay" id="login-modal">
+    <div class="modal-card">
+      <h2>🔐 管理员登录</h2>
+      <p>请输入用户名和密码以访问管理面板</p>
+      <input type="text" class="modal-input" id="login-username" maxlength="30" placeholder="用户名" autocomplete="off">
+      <input type="password" class="modal-input" id="login-password" maxlength="50" placeholder="密码" autocomplete="off" style="margin-top:10px">
+      <div class="modal-error" id="modal-error"></div>
+      <button class="modal-btn" id="login-confirm">登录</button>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Main Content -->
+  <div class="page-wrapper" id="main-content" style="display:none">
+
+    <!-- Back Link -->
+    <a href="./comments.html" class="back-link">
+      <svg><use href="#i-arrow-left"/></svg>
+      返回评论区
+    </a>
+
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title">
+        🛡️ 评论管理面板
+        <small id="identity-label"></small>
+      </h1>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar" id="stats-bar"></div>
+
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <div class="filter-tabs" id="filter-tabs">
+        <button class="filter-tab active" data-filter="all">全部</button>
+        <button class="filter-tab" data-filter="active">正常</button>
+        <button class="filter-tab" data-filter="deleted">已删除</button>
+      </div>
+      <button class="btn btn-primary" id="export-btn">
+        <svg style="width:16px;height:16px"><use href="#i-download"/></svg>
+        导出 JSON
+      </button>
+      <button class="btn btn-danger" id="clear-all-btn">
+        <svg style="width:16px;height:16px"><use href="#i-trash"/></svg>
+        清空所有评论
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-status">状态</th>
+            <th class="col-nick">昵称</th>
+            <th class="col-ip">IP 地址</th>
+            <th class="col-content">评论内容</th>
+            <th class="col-reply">回复</th>
+            <th class="col-time">时间</th>
+            <th class="col-actions">操作</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+  </div>
+
   <script>
-    (function() {
-      var overlay = document.getElementById('page-transition');
-      if (!overlay) return;
-      document.addEventListener('click', function(e) {
-        var link = e.target.closest('a[href]');
-        if (!link) return;
-        var href = link.getAttribute('href');
-        if (!href || href.startsWith('#') || href.startsWith('http') || href.startsWith('//') || href.startsWith('javascript:')) return;
+  (function() {
+    'use strict';
+
+    /* ================================================
+       Constants
+       ================================================ */
+    var ADMIN_USER = 'admin';
+
+    // 密码使用 SHA-256 哈希存储，避免明文泄露
+    var ADMIN_PASS_HASH = '8995c1676864ffb8f048919db374e4da951028c5f7768c931669acb0873b31cf';
+
+    async function hashPassword(pw) {
+      var enc = new TextEncoder().encode(pw);
+      var buf = await crypto.subtle.digest('SHA-256', enc);
+      var arr = Array.from(new Uint8Array(buf));
+      return arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+
+    /* ================================================
+       XSS Sanitize
+       ================================================ */
+    function sanitize(str) {
+      if (typeof str !== 'string') return '';
+      var s = str.replace(/&/g, '&amp;')
+                 .replace(/</g, '&lt;')
+                 .replace(/>/g, '&gt;')
+                 .replace(/"/g, '&quot;')
+                 .replace(/'/g, '&#x27;');
+      s = s.replace(/javascript\s*:/gi, '');
+      s = s.replace(/on\w+\s*=/gi, '');
+      s = s.replace(/data\s*:/gi, '');
+      s = s.replace(/<\/?script[^>]*>/gi, '');
+      return s;
+    }
+
+    /* ================================================
+       Toast
+       ================================================ */
+    function showToast(msg, type) {
+      var container = document.getElementById('toast-container');
+      if (!container) return;
+      var el = document.createElement('div');
+      el.className = 'toast' + (type === 'error' ? ' error' : type === 'success' ? ' success' : '');
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(function() {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 3000);
+    }
+
+    /* ================================================
+       Time Format
+       ================================================ */
+    function formatTime(iso) {
+      if (!iso) return '—';
+      var d = new Date(iso);
+      var pad = function(n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+        ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    }
+
+    /* ================================================
+       State
+       ================================================ */
+    var currentFilter = 'all';
+    var allComments = [];
+
+    /* ================================================
+       Supabase — Comment CRUD
+       ================================================ */
+    async function fetchAllComments() {
+      var resp = await sb.from('comments')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (resp.error) throw resp.error;
+      allComments = resp.data || [];
+      return allComments;
+    }
+
+    function adminHeaders() {
+      sb.rest.headers['X-Admin'] = 'true';
+    }
+
+    async function softDeleteComment(id) {
+      adminHeaders();
+      var resp = await sb.from('comments')
+        .update({ deleted: true, deleted_at: new Date().toISOString() })
+        .eq('id', id);
+      if (resp.error) throw resp.error;
+    }
+
+    async function restoreComment(id) {
+      adminHeaders();
+      var resp = await sb.from('comments')
+        .update({ deleted: false, deleted_at: null })
+        .eq('id', id);
+      if (resp.error) throw resp.error;
+    }
+
+    async function permanentDelete(id) {
+      adminHeaders();
+      var resp = await sb.from('comments')
+        .delete()
+        .eq('id', id);
+      if (resp.error) throw resp.error;
+    }
+
+    async function clearAllComments() {
+      adminHeaders();
+      /* Delete in batches — Supabase supports .neq on BIGINT */
+      var resp = await sb.from('comments')
+        .delete()
+        .neq('id', 0);
+      if (resp.error) throw resp.error;
+    }
+
+    /* ================================================
+       Render
+       ================================================ */
+    function renderStats() {
+      var total = allComments.length;
+      var active = 0, deleted = 0;
+      for (var i = 0; i < allComments.length; i++) {
+        if (allComments[i].deleted) deleted++;
+        else active++;
+      }
+      var bar = document.getElementById('stats-bar');
+      bar.innerHTML =
+        '<div class="stat-card total"><div class="num">' + total + '</div><div class="lbl">总计</div></div>' +
+        '<div class="stat-card active"><div class="num">' + active + '</div><div class="lbl">正常</div></div>' +
+        '<div class="stat-card deleted"><div class="num">' + deleted + '</div><div class="lbl">已删除</div></div>';
+    }
+
+    function renderTable() {
+      var filtered = [];
+      for (var i = 0; i < allComments.length; i++) {
+        var c = allComments[i];
+        if (currentFilter === 'all') filtered.push(c);
+        else if (currentFilter === 'active' && !c.deleted) filtered.push(c);
+        else if (currentFilter === 'deleted' && c.deleted) filtered.push(c);
+      }
+      var tbody = document.getElementById('table-body');
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="no-comments">暂无评论数据</div></td></tr>';
+        return;
+      }
+      var html = '';
+      for (var i = 0; i < filtered.length; i++) {
+        var c = filtered[i];
+        var statusClass = c.deleted ? 'deleted' : 'active';
+        var statusLabel = c.deleted ? '已删除' : '正常';
+        var contentClass = c.deleted ? 'comment-content deleted-text' : 'comment-content';
+        var contentDisplay = c.deleted ? '[已删除] ' + c.content : c.content;
+
+        html += '<tr>' +
+          '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
+          '<td>' + sanitize(c.nickname) + '</td>' +
+          '<td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim)">' + sanitize(c.ip || '') + '</td>' +
+          '<td><div class="' + contentClass + '">' + sanitize(contentDisplay) + '</div></td>' +
+          '<td style="text-align:center;font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim)">' + (c.parent_id ? '↩' : '—') + '</td>' +
+          '<td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim);white-space:nowrap">' + formatTime(c.created_at) +
+            (c.deleted && c.deleted_at ? '<br><span style="font-size:0.7rem;color:var(--red);opacity:0.6">删除于 ' + formatTime(c.deleted_at) + '</span>' : '') +
+          '</td>' +
+          '<td><div class="td-actions">' +
+            (c.deleted
+              ? '<button class="action-btn restore" data-action="restore" data-id="' + c.id + '">恢复</button>' +
+                '<button class="action-btn delete-perm" data-action="delete-perm" data-id="' + c.id + '">永久删除</button>'
+              : '<button class="action-btn delete-perm" data-action="soft-delete" data-id="' + c.id + '">删除</button>'
+            ) +
+          '</div></td>' +
+          '</tr>';
+      }
+      tbody.innerHTML = html;
+    }
+
+    async function renderAll() {
+      try {
+        await fetchAllComments();
+        renderStats();
+        renderTable();
+      } catch (err) {
+        showToast('加载评论失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    /* ================================================
+       Actions
+       ================================================ */
+    async function handleSoftDelete(id) {
+      try {
+        await softDeleteComment(id);
+        await renderAll();
+        showToast('评论已标记删除', 'success');
+      } catch (err) {
+        showToast('删除失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handleRestore(id) {
+      try {
+        await restoreComment(id);
+        await renderAll();
+        showToast('评论已恢复', 'success');
+      } catch (err) {
+        showToast('恢复失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handlePermanentDelete(id) {
+      if (!confirm('确定要永久删除此评论吗？此操作不可撤销。')) return;
+      try {
+        await permanentDelete(id);
+        await renderAll();
+        showToast('评论已永久删除', '');
+      } catch (err) {
+        showToast('删除失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handleClearAll() {
+      if (!confirm('⚠️ 确定要清空所有评论数据吗？此操作不可撤销。')) return;
+      try {
+        await clearAllComments();
+        await renderAll();
+        showToast('所有评论已清空', '');
+      } catch (err) {
+        showToast('清空失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handleExport() {
+      if (allComments.length === 0) {
+        showToast('暂无数据可导出', 'error');
+        return;
+      }
+      var blob = new Blob([JSON.stringify(allComments, null, 2)], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'hnust_comments_backup_' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('导出成功', 'success');
+    }
+
+    /* ================================================
+       Login Modal
+       ================================================ */
+    var modalEl = document.getElementById('login-modal');
+    var userInput = document.getElementById('login-username');
+    var passInput = document.getElementById('login-password');
+    var loginError = document.getElementById('modal-error');
+    var loginConfirm = document.getElementById('login-confirm');
+    var mainContent = document.getElementById('main-content');
+    var identityLabel = document.getElementById('identity-label');
+
+    function showLogin() {
+      modalEl.classList.add('active');
+      userInput.value = '';
+      passInput.value = '';
+      loginError.textContent = '';
+      userInput.className = 'modal-input';
+      passInput.className = 'modal-input';
+      userInput.focus();
+    }
+
+    function doLogin(callback) {
+      modalEl.classList.add('active');
+      userInput.value = '';
+      passInput.value = '';
+      loginError.textContent = '';
+      userInput.className = 'modal-input';
+      passInput.className = 'modal-input';
+      userInput.focus();
+
+      async function onConfirm() {
+        var username = userInput.value.trim();
+        var password = passInput.value.trim();
+        if (!username || !password) {
+          loginError.textContent = '用户名和密码不能为空';
+          userInput.className = 'modal-input error';
+          passInput.className = 'modal-input error';
+          return;
+        }
+        var pwHash = await hashPassword(password);
+        if (username !== ADMIN_USER || pwHash !== ADMIN_PASS_HASH) {
+          loginError.textContent = '用户名或密码错误';
+          userInput.className = 'modal-input error';
+          passInput.className = 'modal-input error';
+          return;
+        }
+        modalEl.classList.remove('active');
+        identityLabel.textContent = '· ' + sanitize(username);
+        mainContent.style.display = 'block';
+        if (typeof callback === 'function') callback(username);
+      }
+
+      loginConfirm.addEventListener('click', onConfirm);
+      passInput.addEventListener('keydown', function onKey(e) {
+        if (e.key === 'Enter') { e.preventDefault(); onConfirm(); }
+      });
+    }
+
+    /* ================================================
+       Event Delegation (Table)
+       ================================================ */
+    document.getElementById('table-body').addEventListener('click', async function(e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      var action = btn.getAttribute('data-action');
+      var id = btn.getAttribute('data-id');
+      if (!id) return;
+      switch (action) {
+        case 'soft-delete': await handleSoftDelete(id); break;
+        case 'restore': await handleRestore(id); break;
+        case 'delete-perm': await handlePermanentDelete(id); break;
+      }
+    });
+
+    /* ================================================
+       Filter Tabs
+       ================================================ */
+    document.getElementById('filter-tabs').addEventListener('click', function(e) {
+      var tab = e.target.closest('.filter-tab');
+      if (!tab) return;
+      var filter = tab.getAttribute('data-filter');
+      if (!filter) return;
+      currentFilter = filter;
+      var tabs = this.querySelectorAll('.filter-tab');
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
+      tab.classList.add('active');
+      renderTable();
+    });
+
+    /* ================================================
+       Toolbar Buttons
+       ================================================ */
+    document.getElementById('export-btn').addEventListener('click', handleExport);
+    document.getElementById('clear-all-btn').addEventListener('click', handleClearAll);
+
+    /* ================================================
+       Cursor Glow
+       ================================================ */
+    (function initCursor() {
+      var isHover = window.matchMedia('(hover: hover)').matches;
+      if (!isHover) return;
+      var el = document.getElementById('cursor-glow');
+      if (!el) return;
+      var mx = -500, my = -500;
+      var sx = -500, sy = -500;
+      document.addEventListener('mousemove', function(e) { mx = e.clientX; my = e.clientY; });
+      function tick() {
+        sx += (mx - sx) * 0.07;
+        sy += (my - sy) * 0.07;
+        el.style.transform = 'translate(' + (sx - 200) + 'px, ' + (sy - 200) + 'px)';
+        requestAnimationFrame(tick);
+      }
+      tick();
+    })();
+
+    /* ================================================
+       Custom Scrollbar
+       ================================================ */
+    (function initScrollbar() {
+      var thumb = document.getElementById('global-scroll-thumb');
+      if (!thumb) return;
+      var dragging = false, dragStartY = 0, thumbStartTop = 0;
+      function syncThumb() {
+        var docH = document.documentElement.scrollHeight;
+        var winH = window.innerHeight;
+        var scrollY = window.scrollY;
+        var maxScroll = Math.max(docH - winH, 0);
+        var trackH = winH - 20;
+        var thumbH = Math.max(30, trackH * (winH / docH));
+        var top = maxScroll > 0 ? (scrollY / maxScroll) * (trackH - thumbH) : 0;
+        thumb.style.height = thumbH + 'px';
+        thumb.style.top = top + 'px';
+        thumb.style.opacity = maxScroll > 0 ? '0.6' : '0';
+      }
+      window.addEventListener('scroll', syncThumb, { passive: true });
+      window.addEventListener('resize', syncThumb, { passive: true });
+      syncThumb();
+      thumb.addEventListener('mousedown', function(e) {
+        dragging = true;
+        dragStartY = e.clientY;
+        thumbStartTop = parseFloat(thumb.style.top) || 0;
+        thumb.classList.add('grabbed');
         e.preventDefault();
-        overlay.classList.add('active');
-        setTimeout(function() { window.location.href = href; }, 420);
+      });
+      document.addEventListener('mousemove', function(e) {
+        if (!dragging) return;
+        var trackH = window.innerHeight - 20;
+        var docH = document.documentElement.scrollHeight;
+        var winH = window.innerHeight;
+        var maxScroll = Math.max(docH - winH, 0);
+        var dy = e.clientY - dragStartY;
+        var newTop = Math.max(0, Math.min(trackH - 30, thumbStartTop + dy));
+        window.scrollTo(0, (newTop / (trackH - 30)) * maxScroll);
+      });
+      document.addEventListener('mouseup', function() {
+        if (dragging) { dragging = false; thumb.classList.remove('grabbed'); }
       });
     })();
+
+    /* ================================================
+       Init
+       ================================================ */
+    async function init() {
+      doLogin(async function() {
+        try { await renderAll(); } catch (_) {}
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+  })();
   </script>
 </body>
 </html>
