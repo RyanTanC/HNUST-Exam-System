@@ -1028,7 +1028,8 @@
       <a href="#features" class="nav-link">功能</a>
       <a href="#why" class="nav-link">优势</a>
       <a href="#download" class="nav-link">下载</a>
-      <a href="./comments.html" class="nav-link">评论区</a>
+      <span class="nav-divider"></span>
+      <a href="./comments.html" class="nav-link">评论</a>
       <div class="nav-indicator" id="navIndicator"></div>
     </div>
   </nav>
@@ -1850,7 +1851,6 @@
     // ===================== LOADER =====================
     function initLoader(callback) {
       var loader = document.getElementById('loader');
-      var loaderTimeout;
       if (PREFERS_REDUCED && loader) {
         loader.classList.add('done');
         loader.style.display = 'none';
@@ -1867,47 +1867,10 @@
         return;
       }
 
-      // 超时兜底：5 秒后强制释放 loader，防止 JS 异常导致永久遮罩
-      loaderTimeout = setTimeout(function() {
-        if (loader.classList.contains('done')) return;
-        clearInterval(typeInterval);
-        clearInterval(statusInterval);
-        clearInterval(progressInterval);
-        barEl.style.width = '100%';
-        pctEl.textContent = '100%';
-        textEl.textContent = fullText;
-        if (statusEl) statusEl.textContent = bootMessages[bootMessages.length - 1];
-        loader.classList.add('done');
-        setTimeout(function() {
-          loader.style.display = 'none';
-          callback();
-        }, 300);
-      }, 5000);
-
-      // ★ 跳过按钮：点击后立即关闭 loader，直接进入页面
-      var skipBtn = document.getElementById('loaderSkip');
-      function handleSkip(e) {
-        if (e.type === 'touchend') e.preventDefault();
-        if (loader.classList.contains('done')) return;
-        clearTimeout(loaderTimeout);
-        clearInterval(typeInterval);
-        clearInterval(statusInterval);
-        clearInterval(progressInterval);
-        barEl.style.width = '100%';
-        pctEl.textContent = '100%';
-        textEl.textContent = fullText;
-        if (statusEl) statusEl.textContent = bootMessages[bootMessages.length - 1];
-        loader.classList.add('done');
-        setTimeout(function() {
-          loader.style.display = 'none';
-          callback();
-        }, 300);
-        try { navigator.vibrate(10); } catch(_) {}
-      }
-      if (skipBtn) {
-        skipBtn.addEventListener('click', handleSkip);
-        skipBtn.addEventListener('touchend', handleSkip, { passive: false });
-      }
+      var finished = false;
+      var progress = 0;
+      var textIdx = 0;
+      var msgIdx = 0;
 
       var fullText = 'INITIALIZING SYSTEM...';
       var bootMessages = [
@@ -1920,55 +1883,71 @@
         'Starting services...',
         'Ready!'
       ];
-      var progress = 0;
-      var textIdx = 0;
-      var msgIdx = 0;
 
-      // Typewriter 打字效果
-      var typeInterval = setInterval(function() {
-        if (textIdx <= fullText.length) {
-          textEl.innerHTML = fullText.slice(0, textIdx) + '<span style="animation:blink 1s step-end infinite">_</span>';
-          textIdx++;
-        } else {
-          clearInterval(typeInterval);
-        }
-      }, 40);
-
-      // 状态信息轮替
-      var statusInterval = setInterval(function() {
-        if (msgIdx < bootMessages.length - 1) {
-          statusEl.textContent = bootMessages[msgIdx];
-          msgIdx++;
-        } else {
-          clearInterval(statusInterval);
-        }
-      }, Math.floor(LOADER_DURATION / bootMessages.length));
-
-      // 进度条
-      var progressInterval = setInterval(function() {
-        progress += Math.floor(Math.random() * 5) + 1;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(progressInterval);
-          clearInterval(typeInterval);
-          clearInterval(statusInterval);
+      function finishLoader() {
+        if (finished) return;
+        finished = true;
+        clearInterval(tick);
+        clearTimeout(fallbackTimer);
+        try {
+          barEl.style.width = '100%';
+          pctEl.textContent = '100%';
           textEl.textContent = fullText;
           statusEl.textContent = bootMessages[bootMessages.length - 1];
+        } catch (_) {}
+        loader.classList.add('done');
+        setTimeout(function() {
+          loader.style.display = 'none';
+          callback();
+        }, 300);
+      }
 
-          clearTimeout(loaderTimeout);
-          setTimeout(function() {
-            loader.classList.add('done');
-            setTimeout(function() {
-              loader.style.display = 'none';
-              callback();
-            }, 950);
-          }, 400);
+      // 超时兜底：3.5 秒后强制释放
+      var fallbackTimer = setTimeout(finishLoader, 3500);
+
+      // 跳过按钮
+      var skipBtn = document.getElementById('loaderSkip');
+      function handleSkip(e) {
+        if (e.type === 'touchend') e.preventDefault();
+        if (finished) return;
+        finishLoader();
+        try { navigator.vibrate(10); } catch(_) {}
+      }
+      if (skipBtn) {
+        skipBtn.addEventListener('click', handleSkip);
+        skipBtn.addEventListener('touchend', handleSkip, { passive: false });
+      }
+
+      // 单循环驱动：打字机 + 状态 + 进度
+      var tick = setInterval(function() {
+        try {
+          // 打字机
+          if (textIdx <= fullText.length) {
+            textEl.innerHTML = fullText.slice(0, textIdx) + '<span style="animation:blink 1s step-end infinite">_</span>';
+            textIdx++;
+          }
+          // 状态
+          if (msgIdx < bootMessages.length - 1 && progress > msgIdx * (100 / bootMessages.length)) {
+            statusEl.textContent = bootMessages[msgIdx];
+            msgIdx++;
+          }
+          // 进度
+          if (progress < 100) {
+            progress += Math.floor(Math.random() * 4) + 2;
+            if (progress > 100) progress = 100;
+            var eased = easeOutExpo(progress / 100);
+            barEl.style.width = (eased * 100) + '%';
+            pctEl.textContent = Math.floor(progress) + '%';
+          }
+          // 完成
+          if (progress >= 100 && textIdx > fullText.length) {
+            finishLoader();
+          }
+        } catch (_) {
+          // 异常保护：防止任何渲染错误导致卡死
+          finishLoader();
         }
-        var eased = easeOutExpo(progress / 100);
-        barEl.style.width = (eased * 100) + '%';
-        pctEl.textContent = Math.floor(progress) + '%';
-      }, 55);
-    }
+      }, 50);
 
     // ===================== PAGE TRANSITIONS =====================
     function initPageTransitions() {
