@@ -335,10 +335,58 @@
       border: 1px solid var(--border);
       transition: all 0.25s ease;
     }
+    .status-badge.pending {
+      background: rgba(251,191,36,0.08);
+      color: #fbbf24;
+      border: 1px solid rgba(251,191,36,0.15);
+    }
     .action-btn.restore { color: var(--green); }
     .action-btn.restore:hover { border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.06); }
     .action-btn.delete-perm { color: var(--red); }
     .action-btn.delete-perm:hover { border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.06); }
+    .action-btn.approve { color: var(--green); }
+    .action-btn.approve:hover { border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.06); }
+    .action-btn.reject { color: #f87171; }
+    .action-btn.reject:hover { border-color: rgba(248,113,113,0.3); background: rgba(248,113,113,0.06); }
+    .flagged-badge {
+      display: inline-block; padding: 1px 8px; border-radius: 4px;
+      font-family: var(--font-mono); font-size: 0.7rem; font-weight: 500;
+      background: rgba(251,191,36,0.06); color: #fbbf24; border: 1px solid rgba(251,191,36,0.15);
+      margin-right: 6px; vertical-align: middle;
+    }
+    .ban-section { margin-top: 20px; padding: 16px; background: var(--surface); border: 1px solid var(--border-light); border-radius: 16px; }
+    .ban-toggle {
+      font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: color 0.2s ease;
+    }
+    .ban-toggle:hover { color: var(--primary); }
+    .ban-toggle .arrow { transition: transform 0.25s ease; display: inline-block; }
+    .ban-toggle.open .arrow { transform: rotate(90deg); }
+    .ban-list { margin-top: 8px; }
+    .ban-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-radius: 8px;
+      background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+      margin-bottom: 4px; font-size: 0.85rem;
+    }
+    .ban-item .ip { font-family: var(--font-mono); color: var(--text); }
+    .ban-item .meta { font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dim); }
+    .ban-item .unban-btn {
+      padding: 4px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.72rem;
+      border: 1px solid var(--border); color: var(--green); cursor: pointer;
+      transition: all 0.25s ease; background: none;
+    }
+    .ban-item .unban-btn:hover { border-color: rgba(134,239,172,0.3); background: rgba(134,239,172,0.06); }
+    .no-bans { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-dim); padding: 12px 0; }
+    .ban-count-badge {
+      font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-dim);
+    }
+    .btn-small {
+      font-family: var(--font-mono); font-size: 0.7rem; padding: 2px 8px;
+      border-radius: 4px; border: 1px solid var(--border); cursor: pointer;
+      background: none; color: var(--text-dim); transition: all 0.25s ease;
+    }
 
     .no-comments {
       text-align: center; padding: 48px 24px;
@@ -434,6 +482,7 @@
       <div class="filter-tabs" id="filter-tabs">
         <button class="filter-tab active" data-filter="all">全部</button>
         <button class="filter-tab" data-filter="active">正常</button>
+        <button class="filter-tab" data-filter="pending">待审核</button>
         <button class="filter-tab" data-filter="deleted">已删除</button>
       </div>
       <button class="btn btn-primary" id="export-btn">
@@ -462,6 +511,16 @@
         </thead>
         <tbody id="table-body"></tbody>
       </table>
+    </div>
+
+    <!-- Ban Management -->
+    <div class="ban-section" id="ban-section">
+      <div class="ban-toggle" id="ban-toggle">
+        <span class="arrow">▶</span>
+        封禁管理
+        <span class="ban-count-badge" id="ban-count"></span>
+      </div>
+      <div class="ban-list" id="ban-list" style="display:none"></div>
     </div>
 
   </div>
@@ -591,10 +650,56 @@
 
     async function clearAllComments() {
       adminHeaders();
-      /* Delete in batches — Supabase supports .neq on BIGINT */
       var resp = await sb.from('comments')
         .delete()
         .neq('id', 0);
+      if (resp.error) throw resp.error;
+    }
+
+    /* ================================================
+       Moderation (Approve / Reject)
+       ================================================ */
+    async function approveComment(id) {
+      adminHeaders();
+      var resp = await sb.from('comments')
+        .update({ status: 'active', flagged_word: null })
+        .eq('id', id);
+      if (resp.error) throw resp.error;
+    }
+
+    async function rejectComment(id) {
+      adminHeaders();
+      var resp = await sb.from('comments')
+        .update({ status: 'rejected' })
+        .eq('id', id);
+      if (resp.error) throw resp.error;
+    }
+
+    /* ================================================
+       Ban Management
+       ================================================ */
+    async function fetchBannedIps() {
+      adminHeaders();
+      var resp = await sb.from('banned_devices')
+        .select('*')
+        .order('banned_at', { ascending: false });
+      if (resp.error) throw resp.error;
+      return resp.data || [];
+    }
+
+    async function banIp(ip, reason) {
+      adminHeaders();
+      var resp = await sb.from('banned_devices')
+        .insert({ ip: ip, reason: reason || '' })
+        .select();
+      if (resp.error) throw resp.error;
+    }
+
+    async function unbanIp(ip) {
+      adminHeaders();
+      var resp = await sb.from('banned_devices')
+        .delete()
+        .eq('ip', ip);
       if (resp.error) throw resp.error;
     }
 
@@ -603,16 +708,19 @@
        ================================================ */
     function renderStats() {
       var total = allComments.length;
-      var active = 0, deleted = 0;
+      var active = 0, deleted = 0, pending = 0;
       for (var i = 0; i < allComments.length; i++) {
-        if (allComments[i].deleted) deleted++;
+        var c = allComments[i];
+        if (c.status === 'pending') pending++;
+        else if (c.deleted) deleted++;
         else active++;
       }
       var bar = document.getElementById('stats-bar');
       bar.innerHTML =
         '<div class="stat-card total"><div class="num">' + total + '</div><div class="lbl">总计</div></div>' +
         '<div class="stat-card active"><div class="num">' + active + '</div><div class="lbl">正常</div></div>' +
-        '<div class="stat-card deleted"><div class="num">' + deleted + '</div><div class="lbl">已删除</div></div>';
+        '<div class="stat-card deleted"><div class="num">' + deleted + '</div><div class="lbl">已删除</div></div>' +
+        '<div class="stat-card pending" style="' + (pending > 0 ? '' : 'opacity:0.5') + '"><div class="num" style="color:#fbbf24">' + pending + '</div><div class="lbl">待审核</div></div>';
     }
 
     function renderTable() {
@@ -620,8 +728,9 @@
       for (var i = 0; i < allComments.length; i++) {
         var c = allComments[i];
         if (currentFilter === 'all') filtered.push(c);
-        else if (currentFilter === 'active' && !c.deleted) filtered.push(c);
+        else if (currentFilter === 'active' && !c.deleted && c.status !== 'pending') filtered.push(c);
         else if (currentFilter === 'deleted' && c.deleted) filtered.push(c);
+        else if (currentFilter === 'pending' && c.status === 'pending') filtered.push(c);
       }
       var tbody = document.getElementById('table-body');
       if (filtered.length === 0) {
@@ -631,27 +740,41 @@
       var html = '';
       for (var i = 0; i < filtered.length; i++) {
         var c = filtered[i];
-        var statusClass = c.deleted ? 'deleted' : 'active';
-        var statusLabel = c.deleted ? '已删除' : '正常';
+        var isPending = c.status === 'pending';
+        var statusClass = c.deleted ? 'deleted' : (isPending ? 'pending' : 'active');
+        var statusLabel = c.deleted ? '已删除' : (isPending ? '待审核' : '正常');
         var contentClass = c.deleted ? 'comment-content deleted-text' : 'comment-content';
         var contentDisplay = c.deleted ? '[已删除] ' + c.content : c.content;
+        var flaggedHtml = isPending && c.flagged_word
+          ? '<br><span class="flagged-badge">违禁词: ' + sanitize(c.flagged_word) + '</span>'
+          : '';
+
+        var actions = '';
+        if (isPending) {
+          actions =
+            '<button class="action-btn approve" data-action="approve" data-id="' + c.id + '">通过</button>' +
+            '<button class="action-btn reject" data-action="reject" data-id="' + c.id + '">驳回</button>' +
+            '<button class="action-btn ban" data-action="ban" data-id="' + c.id + '" data-ip="' + sanitize(c.ip || '') + '" data-nick="' + sanitize(c.nickname) + '">封禁</button>';
+        } else if (c.deleted) {
+          actions =
+            '<button class="action-btn restore" data-action="restore" data-id="' + c.id + '">恢复</button>' +
+            '<button class="action-btn delete-perm" data-action="delete-perm" data-id="' + c.id + '">永久删除</button>';
+        } else {
+          actions =
+            '<button class="action-btn ban" data-action="ban" data-id="' + c.id + '" data-ip="' + sanitize(c.ip || '') + '" data-nick="' + sanitize(c.nickname) + '">封禁</button>' +
+            '<button class="action-btn delete-perm" data-action="soft-delete" data-id="' + c.id + '">删除</button>';
+        }
 
         html += '<tr>' +
           '<td><span class="status-badge ' + statusClass + '">' + statusLabel + '</span></td>' +
           '<td>' + sanitize(c.nickname) + '</td>' +
           '<td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim)">' + sanitize(c.ip || '') + '</td>' +
-          '<td><div class="' + contentClass + '">' + sanitize(contentDisplay) + '</div></td>' +
+          '<td><div class="' + contentClass + '">' + sanitize(contentDisplay) + flaggedHtml + '</div></td>' +
           '<td style="text-align:center;font-family:var(--font-mono);font-size:0.72rem;color:var(--text-dim)">' + (c.parent_id ? '↩' : '—') + '</td>' +
           '<td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-dim);white-space:nowrap">' + formatTime(c.created_at) +
             (c.deleted && c.deleted_at ? '<br><span style="font-size:0.7rem;color:var(--red);opacity:0.6">删除于 ' + formatTime(c.deleted_at) + '</span>' : '') +
           '</td>' +
-          '<td><div class="td-actions">' +
-            (c.deleted
-              ? '<button class="action-btn restore" data-action="restore" data-id="' + c.id + '">恢复</button>' +
-                '<button class="action-btn delete-perm" data-action="delete-perm" data-id="' + c.id + '">永久删除</button>'
-              : '<button class="action-btn delete-perm" data-action="soft-delete" data-id="' + c.id + '">删除</button>'
-            ) +
-          '</div></td>' +
+          '<td><div class="td-actions">' + actions + '</div></td>' +
           '</tr>';
       }
       tbody.innerHTML = html;
@@ -709,6 +832,82 @@
         showToast('所有评论已清空', '');
       } catch (err) {
         showToast('清空失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    /* ================================================
+       Moderation Actions
+       ================================================ */
+    async function handleApprove(id) {
+      try {
+        await approveComment(id);
+        await renderAll();
+        showToast('评论已通过审核', 'success');
+      } catch (err) {
+        showToast('操作失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handleReject(id) {
+      try {
+        await rejectComment(id);
+        await renderAll();
+        showToast('评论已驳回', '');
+      } catch (err) {
+        showToast('操作失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    async function handleBan(ip, nickname) {
+      if (!ip) { showToast('无 IP 地址可封禁', 'error'); return; }
+      if (!confirm('确定要封禁 ' + sanitize(nickname || ip) + ' (' + ip + ') 吗？该设备将无法再评论。')) return;
+      try {
+        await banIp(ip, '由管理员封禁 - ' + sanitize(nickname || ''));
+        showToast('已封禁 ' + ip, 'success');
+        await renderBanList();
+      } catch (err) {
+        showToast('封禁失败: ' + (err.message || '网络错误'), 'error');
+      }
+    }
+
+    /* ================================================
+       Ban List Rendering
+       ================================================ */
+    async function renderBanList() {
+      var listEl = document.getElementById('ban-list');
+      var countEl = document.getElementById('ban-count');
+      if (!listEl) return;
+      try {
+        var bans = await fetchBannedIps();
+        if (countEl) countEl.textContent = '(' + bans.length + ')';
+        if (bans.length === 0) {
+          listEl.innerHTML = '<div class="no-bans">暂无封禁记录</div>';
+          return;
+        }
+        var html = '';
+        for (var i = 0; i < bans.length; i++) {
+          var b = bans[i];
+          html += '<div class="ban-item">' +
+            '<div><span class="ip">' + sanitize(b.ip) + '</span>' +
+            (b.reason ? '<span style="color:var(--text-dim);font-size:0.78rem;margin-left:8px">' + sanitize(b.reason) + '</span>' : '') +
+            '<div class="meta">封禁于 ' + formatTime(b.banned_at) + '</div></div>' +
+            '<button class="unban-btn" data-action="unban" data-ip="' + sanitize(b.ip) + '">解封</button>' +
+            '</div>';
+        }
+        listEl.innerHTML = html;
+      } catch (err) {
+        listEl.innerHTML = '<div class="no-bans" style="color:var(--red)">加载失败: ' + err.message + '</div>';
+      }
+    }
+
+    async function handleUnban(ip) {
+      if (!confirm('确定要解封 ' + ip + ' 吗？')) return;
+      try {
+        await unbanIp(ip);
+        showToast('已解封 ' + ip, 'success');
+        await renderBanList();
+      } catch (err) {
+        showToast('解封失败: ' + (err.message || '网络错误'), 'error');
       }
     }
 
@@ -803,11 +1002,17 @@
       if (!btn) return;
       var action = btn.getAttribute('data-action');
       var id = btn.getAttribute('data-id');
-      if (!id) return;
       switch (action) {
-        case 'soft-delete': await handleSoftDelete(id); break;
-        case 'restore': await handleRestore(id); break;
-        case 'delete-perm': await handlePermanentDelete(id); break;
+        case 'soft-delete': if (id) await handleSoftDelete(id); break;
+        case 'restore': if (id) await handleRestore(id); break;
+        case 'delete-perm': if (id) await handlePermanentDelete(id); break;
+        case 'approve': if (id) await handleApprove(id); break;
+        case 'reject': if (id) await handleReject(id); break;
+        case 'ban':
+          var ip = btn.getAttribute('data-ip');
+          var nick = btn.getAttribute('data-nick');
+          await handleBan(ip, nick);
+          break;
       }
     });
 
@@ -831,6 +1036,27 @@
        ================================================ */
     document.getElementById('export-btn').addEventListener('click', handleExport);
     document.getElementById('clear-all-btn').addEventListener('click', handleClearAll);
+
+    /* ================================================
+       Ban Toggle & Ban List Events
+       ================================================ */
+    document.getElementById('ban-toggle').addEventListener('click', async function() {
+      var listEl = document.getElementById('ban-list');
+      var isHidden = listEl.style.display === 'none';
+      listEl.style.display = isHidden ? 'block' : 'none';
+      this.classList.toggle('open');
+      if (isHidden) await renderBanList();
+    });
+
+    document.getElementById('ban-list').addEventListener('click', async function(e) {
+      var btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      var action = btn.getAttribute('data-action');
+      if (action === 'unban') {
+        var ip = btn.getAttribute('data-ip');
+        if (ip) await handleUnban(ip);
+      }
+    });
 
     /* ================================================
        Cursor Glow
@@ -901,7 +1127,10 @@
        ================================================ */
     async function init() {
       doLogin(async function() {
-        try { await renderAll(); } catch (_) {}
+        try {
+          await renderAll();
+          try { await renderBanList(); } catch (_) {}
+        } catch (_) {}
       });
     }
 

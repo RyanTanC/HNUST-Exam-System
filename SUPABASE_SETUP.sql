@@ -34,14 +34,14 @@ ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.admin_settings FROM anon, authenticated;
 
 INSERT INTO public.admin_settings (key, value)
-VALUES ('admin_pass_hash', 'CHANGE_ME_SHA256_HASH')
+VALUES ('admin_pass_hash', '8995c1676864ffb8f048919db374e4da951028c5f7768c931669acb0873b31cf')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 CREATE OR REPLACE FUNCTION public.verify_admin_password(password text)
 RETURNS boolean
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
   SELECT EXISTS (
     SELECT 1
@@ -49,7 +49,7 @@ AS $$
     WHERE key = 'admin_pass_hash'
       AND value <> ''
       AND value <> 'CHANGE_ME_SHA256_HASH'
-      AND value = encode(digest(coalesce(password, ''), 'sha256'), 'hex')
+      AND value = encode(extensions.digest(coalesce(password, ''), 'sha256'), 'hex')
   );
 $$;
 
@@ -99,8 +99,33 @@ CREATE POLICY "admin_delete" ON public.comments
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.comments TO anon;
 
 -- ================================================
--- 已有数据库迁移（仅需执行一次）
--- 如果是从旧版升级，取消注释并执行：
+-- 增量迁移（已有数据库升级用）
 -- ================================================
--- ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS parent_id UUID DEFAULT NULL;
--- CREATE INDEX IF NOT EXISTS idx_comments_parent_id ON public.comments (parent_id);
+
+-- 7. 增加审核状态字段
+ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+-- 修复旧数据
+UPDATE public.comments SET status = 'active' WHERE status IS NULL;
+-- 增加违禁词记录字段
+ALTER TABLE public.comments ADD COLUMN IF NOT EXISTS flagged_word TEXT DEFAULT NULL;
+
+-- 8. 创建设备封禁表
+CREATE TABLE IF NOT EXISTS public.banned_devices (
+  ip TEXT PRIMARY KEY,
+  banned_at TIMESTAMPTZ DEFAULT NOW(),
+  reason TEXT DEFAULT ''
+);
+
+ALTER TABLE public.banned_devices ENABLE ROW LEVEL SECURITY;
+
+-- 任何人都可以查询封禁列表（用于前端检查自己的 IP）
+DROP POLICY IF EXISTS "anyone_check_ban" ON public.banned_devices;
+CREATE POLICY "anyone_check_ban" ON public.banned_devices
+  FOR SELECT USING (true);
+
+-- 只有管理员可以管理封禁
+DROP POLICY IF EXISTS "admin_manage_ban" ON public.banned_devices;
+CREATE POLICY "admin_manage_ban" ON public.banned_devices
+  FOR ALL USING (public.is_admin_request());
+
+GRANT SELECT ON TABLE public.banned_devices TO anon;
