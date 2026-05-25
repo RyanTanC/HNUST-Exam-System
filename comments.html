@@ -15,6 +15,8 @@
 
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="./js/supabase-config.js"></script>
+  <script src="./js/sensitive-words.js"></script>
+  <script src="./js/sensitive-filter.js"></script>
 
   <style>
     @font-face {
@@ -326,8 +328,8 @@
     .comment-item {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px; padding: 20px;
-      margin-bottom: 12px;
+      border-radius: 16px; padding: 14px 16px;
+      margin-bottom: 10px;
       backdrop-filter: blur(8px);
       animation: fade-in 0.4s cubic-bezier(.22,1,.36,1) both;
       transition: border-color 0.3s ease, opacity 0.4s ease;
@@ -381,9 +383,24 @@
       border-color: rgba(var(--primary-rgb), 0.3);
     }
     .comment-replies {
-      margin-left: 20px; padding-left: 16px;
+      margin-left: 16px; padding-left: 14px;
       border-left: 2px solid var(--border);
-      margin-top: 10px;
+      margin-top: 8px;
+    }
+    .replies-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 4px;
+    }
+    .replies-collapsible {
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows 0.35s cubic-bezier(.22,1,.36,1);
+    }
+    .comment-replies.collapsed .replies-collapsible {
+      grid-template-rows: 0fr;
+    }
+    .replies-inner {
+      overflow: hidden;
     }
     .reply-item {
       padding: 10px 0;
@@ -618,6 +635,8 @@
     async function fetchComments() {
       var resp = await sb.from('comments')
         .select('*')
+        .eq('status', 'active')
+        .eq('deleted', false)
         .order('created_at', { ascending: false });
       if (resp.error) throw resp.error;
       return resp.data || [];
@@ -631,7 +650,7 @@
       } catch (_) { return ''; }
     }
 
-    async function addComment(nickname, content, parentId) {
+    async function addComment(nickname, content, parentId, status, flaggedWord) {
       var ip = await getClientIP();
       var record = {
         nickname: sanitizeNickname(nickname),
@@ -639,6 +658,8 @@
         content: sanitize(content).trim()
       };
       if (parentId) record.parent_id = parentId;
+      if (status) record.status = status;
+      if (flaggedWord) record.flagged_word = flaggedWord;
       var resp = await sb.from('comments')
         .insert(record)
         .select();
@@ -651,6 +672,44 @@
         .update({ deleted: true, deleted_at: new Date().toISOString() })
         .eq('id', id);
       if (resp.error) throw resp.error;
+    }
+
+    /* ================================================
+       Rate Limiting
+       ================================================ */
+    async function checkRateLimit(nickname) {
+      if (nickname === '开发者') return null;
+      var now = Date.now();
+      var oneMinuteAgo = new Date(now - 60000).toISOString();
+      var oneHourAgo = new Date(now - 3600000).toISOString();
+      var resp = await sb.from('comments')
+        .select('created_at')
+        .eq('nickname', nickname)
+        .gte('created_at', oneHourAgo);
+      if (resp.error) throw resp.error;
+      var recent = resp.data || [];
+      var withinMinute = 0, withinHour = 0;
+      var minuteCutoff = oneMinuteAgo;
+      for (var i = 0; i < recent.length; i++) {
+        if (recent[i].created_at >= minuteCutoff) withinMinute++;
+        withinHour++;
+      }
+      if (withinMinute >= 3) return '发送过于频繁，请 1 分钟后再试';
+      if (withinHour >= 12) return '已达到每小时评论上限（12 条），请稍后再试';
+      return null;
+    }
+
+    /* ================================================
+       IP Ban Check
+       ================================================ */
+    async function checkIpBan(ip) {
+      if (!ip) return false;
+      var resp = await sb.from('banned_devices')
+        .select('ip')
+        .eq('ip', ip)
+        .limit(1);
+      if (resp.error) throw resp.error;
+      return resp.data && resp.data.length > 0;
     }
 
     /* ================================================
@@ -743,29 +802,31 @@
             var isExpanded = expandedReplies[c.id];
             var toggleLabel = isExpanded ? '收起回复' : '展开 ' + replyCount + ' 条回复';
             var repliesHtml = '';
-            if (isExpanded) {
-              for (var r = 0; r < replies.length; r++) {
-                var rep = replies[r];
-                var repDel = (rep.nickname === currentNick)
-                  ? '<button class="comment-del-btn" data-action="delete" data-id="' + rep.id + '" style="font-size:0.65rem;padding:2px 8px">删除</button>'
-                  : '';
-                repliesHtml += '<div class="reply-item" data-id="' + rep.id + '">' +
-                  '<div class="comment-header" style="margin-bottom:4px">' +
-                  '<span class="comment-author" style="font-size:0.82rem">' + sanitize(rep.nickname) + '</span>' +
-                  '<div class="comment-actions">' +
-                  '<span class="comment-time">' + formatTime(rep.created_at) + '</span>' +
-                  repDel +
-                  '</div>' +
-                  '</div>' +
-                  '<div class="comment-body" style="font-size:0.85rem">' + sanitize(rep.content) + '</div>' +
-                  '</div>';
-              }
+            for (var r = 0; r < replies.length; r++) {
+              var rep = replies[r];
+              var repDel = (rep.nickname === currentNick)
+                ? '<button class="comment-del-btn" data-action="delete" data-id="' + rep.id + '" style="font-size:0.65rem;padding:2px 8px">删除</button>'
+                : '';
+              repliesHtml += '<div class="reply-item" data-id="' + rep.id + '">' +
+                '<div class="comment-header" style="margin-bottom:4px">' +
+                '<span class="comment-author" style="font-size:0.82rem">' + sanitize(rep.nickname) + '</span>' +
+                '<div class="comment-actions">' +
+                '<span class="comment-time">' + formatTime(rep.created_at) + '</span>' +
+                repDel +
+                '</div>' +
+                '</div>' +
+                '<div class="comment-body" style="font-size:0.85rem">' + sanitize(rep.content) + '</div>' +
+                '</div>';
             }
             replySection =
-              '<div class="comment-replies">' +
-              '<span class="reply-count-badge">—— ' + replyCount + ' 条回复 ——</span>' +
+              '<div class="comment-replies' + (isExpanded ? '' : ' collapsed') + '">' +
+              '<div class="replies-header">' +
+              '<span class="reply-count-badge">' + replyCount + ' 条回复</span>' +
               '<span class="reply-toggle" data-action="toggle-replies" data-id="' + c.id + '">' + toggleLabel + '</span>' +
-              repliesHtml +
+              '</div>' +
+              '<div class="replies-collapsible">' +
+              '<div class="replies-inner">' + repliesHtml + '</div>' +
+              '</div>' +
               '</div>';
           }
           var replyFormVisible = (activeReplyId === String(c.id)) ? '' : ' style="display:none"';
@@ -872,7 +933,22 @@
       var err = validateComment(content);
       if (err) { showToast(err, 'error'); return; }
       try {
+        var ip = await getClientIP();
+        var banned = await checkIpBan(ip);
+        if (banned) { showToast('您的设备已被封禁，无法评论', 'error'); return; }
+        var limitErr = await checkRateLimit(nickname);
+        if (limitErr) { showToast(limitErr, 'error'); return; }
         submitBtn.disabled = true;
+        var badWord = containsSensitiveWord(content);
+        if (badWord) {
+          await addComment(nickname, content, null, 'pending', badWord);
+          textarea.value = '';
+          updateCounter();
+          await renderComments();
+          showToast('评论已提交，等待管理员审核', 'success');
+          textarea.focus();
+          return;
+        }
         await addComment(nickname, content);
         textarea.value = '';
         updateCounter();
@@ -922,8 +998,20 @@
         return;
       }
       if (action === 'toggle-replies' && id) {
-        expandedReplies[id] = !expandedReplies[id];
-        await renderComments();
+        var card = btn.closest('.comment-item');
+        var repliesEl = card.querySelector('.comment-replies');
+        if (repliesEl) {
+          var isCollapsed = repliesEl.classList.contains('collapsed');
+          if (isCollapsed) {
+            repliesEl.classList.remove('collapsed');
+            btn.textContent = '收起回复';
+          } else {
+            repliesEl.classList.add('collapsed');
+            var count = repliesEl.querySelectorAll('.reply-item').length;
+            btn.textContent = '展开 ' + count + ' 条回复';
+          }
+          expandedReplies[id] = !!isCollapsed;
+        }
         return;
       }
       if (action === 'submit-reply' && parentId) {
@@ -940,7 +1028,20 @@
         var err = validateComment(content);
         if (err) { showToast(err, 'error'); return; }
         try {
+          var ip = await getClientIP();
+          var banned = await checkIpBan(ip);
+          if (banned) { showToast('您的设备已被封禁，无法回复', 'error'); return; }
+          var limitErr = await checkRateLimit(nickname);
+          if (limitErr) { showToast(limitErr, 'error'); return; }
           btn.disabled = true;
+          var badWord = containsSensitiveWord(content);
+          if (badWord) {
+            await addComment(nickname, content, parentId, 'pending', badWord);
+            expandedReplies[parentId] = true;
+            await renderComments();
+            showToast('回复已提交，等待管理员审核', 'success');
+            return;
+          }
           await addComment(nickname, content, parentId);
           expandedReplies[parentId] = true;
           await renderComments();
