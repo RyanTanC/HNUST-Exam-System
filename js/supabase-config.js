@@ -13,7 +13,7 @@
 
 // Supabase anon key is safe to expose in frontend code. Do not place service_role keys here.
 var _SU = 'https://edtnzsxlogdxygcbtwmb.supabase.co';
-var _SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkdG56c3hsb2dkeHlnY2J0d21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTYxMTY3MCwiZXhwIjoyMDk1MTg3NjcwfQ.GYU_aMzvYJM20yV1haMG7UZ0wt8s1UQtmE7WrvRwuWk';
+var _SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkdG56c3hsb2dkeHlnY2J0d21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk2MTE2NzAsImV4cCI6MjA5NTE4NzY3MH0.GYU_aMzvYJM20yV1haMG7UZ0wt8s1URtme7WrvRwuWk';
 
 if (!_SU || _SU.indexOf('your-project') !== -1) {
   console.error('[HNUST] 请先在 js/supabase-config.js 中配置 Supabase 项目信息');
