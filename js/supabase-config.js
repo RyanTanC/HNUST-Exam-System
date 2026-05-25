@@ -8,13 +8,12 @@
       替换为你的项目值（Settings → API）
    4. 警告：anon key 可安全暴露在前端，
       但请勿泄露 service_role key
-   5. 上方敏感值已加密存储，请勿泄露编码串
+   5. anon key 可以公开用于前端；真正的管理员权限由数据库策略限制
    ================================================ */
 
-// 以下值已通过 Base64 编码保护，运行时解码
-// 如需更换项目，替换下方 Base64 字符串即可
-var _SU = atob('aHR0cHM6Ly9lZHRuenN4bG9nZHh5Z2NidHdtYi5zdXBhYmFzZS5jbw==');
-var _SK = atob('ZXlKaGJHY2lPaUpJVXpJMU5pSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBjM01pT2lKemRYQmhZbUZ6WlNJc0luSmxaaUk2SW1Wa2RHNTZjM2hzYjJka2VIbG5ZMkowZDIxaUlpd2ljbTlzWlNJNkltRnViMjRpTENKcFlYUWlPakUzTnprMk1URTJOekFzSW1WNGNDSTZNakE1TlRFNE56WTNNSDAuR1lVX2FNenZZSk0yMHlWMWhhTUc3VVowd3Q4czFVUnRtZTdXcnZSd3VXaw==');
+// Supabase anon key is safe to expose in frontend code. Do not place service_role keys here.
+var _SU = 'https://edtnzsxlogdxygcbtwmb.supabase.co';
+var _SK = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkdG56c3hsb2dkeHlnY2J0d21iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTYxMTY3MCwiZXhwIjoyMDk1MTg3NjcwfQ.GYU_aMzvYJM20yV1haMG7UZ0wt8s1UQtmE7WrvRwuWk';
 
 if (!_SU || _SU.indexOf('your-project') !== -1) {
   console.error('[HNUST] 请先在 js/supabase-config.js 中配置 Supabase 项目信息');

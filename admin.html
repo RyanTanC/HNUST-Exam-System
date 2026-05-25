@@ -475,15 +475,7 @@
        ================================================ */
     var ADMIN_USER = 'admin';
 
-    // 密码使用 SHA-256 哈希存储，避免明文泄露
-    var ADMIN_PASS_HASH = '8995c1676864ffb8f048919db374e4da951028c5f7768c931669acb0873b31cf';
-
-    async function hashPassword(pw) {
-      var enc = new TextEncoder().encode(pw);
-      var buf = await crypto.subtle.digest('SHA-256', enc);
-      var arr = Array.from(new Uint8Array(buf));
-      return arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-    }
+    var adminPassword = '';
 
     /* ================================================
        XSS Sanitize
@@ -547,7 +539,30 @@
     }
 
     function adminHeaders() {
-      sb.rest.headers['X-Admin'] = 'true';
+      var headers = sb && sb.rest && sb.rest.headers;
+      if (!headers) return;
+      if (typeof headers.set === 'function') {
+        headers.set('X-Admin', 'true');
+        headers.set('X-Admin-Password', adminPassword);
+        return;
+      }
+      headers['X-Admin'] = 'true';
+      headers['X-Admin-Password'] = adminPassword;
+    }
+
+    async function verifyAdminPassword(password) {
+      adminPassword = password;
+      adminHeaders();
+      var resp = await sb.rpc('verify_admin_password', { password: password });
+      if (resp.error) {
+        adminPassword = '';
+        throw resp.error;
+      }
+      if (resp.data !== true) {
+        adminPassword = '';
+        return false;
+      }
+      return true;
     }
 
     async function softDeleteComment(id) {
@@ -753,8 +768,16 @@
           passInput.className = 'modal-input error';
           return;
         }
-        var pwHash = await hashPassword(password);
-        if (username !== ADMIN_USER || pwHash !== ADMIN_PASS_HASH) {
+        var ok = false;
+        try {
+          ok = username === ADMIN_USER && await verifyAdminPassword(password);
+        } catch (err) {
+          loginError.textContent = '管理员校验失败，请确认已执行最新 SUPABASE_SETUP.sql';
+          userInput.className = 'modal-input error';
+          passInput.className = 'modal-input error';
+          return;
+        }
+        if (!ok) {
           loginError.textContent = '用户名或密码错误';
           userInput.className = 'modal-input error';
           passInput.className = 'modal-input error';
