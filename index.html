@@ -1051,8 +1051,8 @@
       };
 
       // ============ SPRINGS ============
-      var sY      = new S(-22, 100, 8);   // 容器 Y (从上方隐藏)
-      var sScale  = new S(0.96, 100, 8);  // 容器 scale
+      var sY      = new S(-50, 70, 5);    // 容器 Y (从上方隐藏，低阻尼=弹跳大)
+      var sScale  = new S(0.85, 70, 5);   // 容器 scale (从小放大)
       var sOpacity = new S(0, 100, 20);   // 容器 opacity
       var sDotSc  = new S(1.3, 100, 8);   // 圆点 scale
       var sDotX   = new S(-15, 100, 8);   // 圆点 X
@@ -1083,7 +1083,7 @@
         tw = []; twStart = performance.now(); running = true;
 
         // snap 初始
-        sY.snap(-22); sScale.snap(0.96); sOpacity.snap(0);
+        sY.snap(-50); sScale.snap(0.85); sOpacity.snap(0);
         sDotSc.snap(1.3); sDotX.snap(-15); sDotW.snap(30); sDotH.snap(80); sDotO.snap(0);
         sInnerO.snap(0);
         dot.style.opacity = '0';
@@ -1108,7 +1108,7 @@
         nav.classList.remove('nav-show');
 
         T(0.00, function() { sInnerO.set(0); });
-        T(0.15, function() { sOpacity.set(0); sY.set(-22); sScale.set(0.96); });
+        T(0.15, function() { sOpacity.set(0); sY.set(-50); sScale.set(0.85); });
       }
 
       // ============ RENDER LOOP ============
