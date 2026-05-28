@@ -567,6 +567,45 @@
       opacity: 1;
       pointer-events: auto;
     }
+
+    /* Download hint toast */
+    .download-hint-toast {
+      position: fixed;
+      top: 100px;
+      right: 24px;
+      z-index: 9999;
+      padding: 14px 22px;
+      border-radius: 14px;
+      background: rgba(139,92,246,0.15);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      backdrop-filter: saturate(180%) blur(20px);
+      border: 1px solid rgba(139,92,246,0.3);
+      color: #f0ece4;
+      font-size: 0.92rem;
+      font-family: var(--font-body);
+      font-weight: 500;
+      line-height: 1.5;
+      max-width: 320px;
+      pointer-events: none;
+      opacity: 0;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 0 0 0.5px rgba(255,255,255,0.06);
+    }
+    .download-hint-toast.show {
+      animation: toastPulse 2s ease-in-out infinite;
+    }
+    .download-hint-toast .toast-arrow {
+      display: inline-block;
+      margin-left: 4px;
+      animation: toastBounce 1.5s ease-in-out infinite;
+    }
+    @keyframes toastPulse {
+      0%, 100% { opacity: 0; }
+      20%, 80% { opacity: 1; }
+    }
+    @keyframes toastBounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(4px); }
+    }
   </style>
 </head>
 <body>
@@ -677,7 +716,7 @@
 
     <!-- Gallery -->
     <div class="gallery">
-      <h2 class="gallery-title">📖 安装与界面预览</h2>
+      <h2 class="gallery-title">📖 安装问题解决教程</h2>
       <div class="gallery-grid">
         <div class="gallery-item">
           <img class="gallery-img" src="./images/1.png" alt="安装步骤">
@@ -1534,6 +1573,32 @@
 
     // Init
     scheduleUpdate();
+  })();
+  </script>
+
+  <!-- Download hint toast -->
+  <div class="download-hint-toast" id="downloadHintToast">
+    下载有提示？往下滑看一下问题教程 <span class="toast-arrow">↓</span>
+  </div>
+
+  <script>
+  (function() {
+    'use strict';
+    var toast = document.getElementById('downloadHintToast');
+    var btnWin = document.getElementById('dl-btn-win');
+    var btnMac = document.getElementById('dl-btn-mac');
+    if (!toast || !btnWin || !btnMac) return;
+
+    var DELAY = 0; // 开发模式：立即显示，上线后改 15000
+
+    function showToast() {
+      setTimeout(function() {
+        toast.classList.add('show');
+      }, DELAY);
+    }
+
+    btnWin.addEventListener('click', showToast);
+    btnMac.addEventListener('click', showToast);
   })();
   </script>
 </body>
