@@ -635,7 +635,6 @@
     async function fetchComments() {
       var resp = await sb.from('comments')
         .select('*')
-        .eq('status', 'active')
         .eq('deleted', false)
         .order('created_at', { ascending: false });
       if (resp.error) throw resp.error;
@@ -650,7 +649,7 @@
       } catch (_) { return ''; }
     }
 
-    async function addComment(nickname, content, parentId, status, flaggedWord) {
+    async function addComment(nickname, content, parentId, flaggedWord) {
       var ip = await getClientIP();
       var record = {
         nickname: sanitizeNickname(nickname),
@@ -658,7 +657,6 @@
         content: sanitize(content).trim()
       };
       if (parentId) record.parent_id = parentId;
-      if (status) record.status = status;
       if (flaggedWord) record.flagged_word = flaggedWord;
       var resp = await sb.from('comments')
         .insert(record)
@@ -941,7 +939,7 @@
         submitBtn.disabled = true;
         var badWord = containsSensitiveWord(content);
         if (badWord) {
-          await addComment(nickname, content, null, 'pending', badWord);
+          await addComment(nickname, content, null, badWord);
           textarea.value = '';
           updateCounter();
           await renderComments();
@@ -1036,7 +1034,7 @@
           btn.disabled = true;
           var badWord = containsSensitiveWord(content);
           if (badWord) {
-            await addComment(nickname, content, parentId, 'pending', badWord);
+            await addComment(nickname, content, parentId, badWord);
             expandedReplies[parentId] = true;
             await renderComments();
             showToast('回复已提交，等待管理员审核', 'success');
