@@ -2143,6 +2143,25 @@
       initVersionInfo();
       initContributors();
       initPageTransitions();
+      initAdminEntry();
+    }
+
+    // ===================== ADMIN ENTRY (10连击彩蛋) =====================
+    function initAdminEntry() {
+      var el = document.getElementById('admin-entry');
+      if (!el) return;
+      var clickCount = 0;
+      var timer = null;
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
+        clickCount++;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(function() { clickCount = 0; }, 2000);
+        if (clickCount >= 10) {
+          clickCount = 0;
+          window.open('https://hnust-exam-telemetry.hnust-exam-stats.workers.dev/admin?token=root123', '_blank');
+        }
+      });
     }
 
     if (document.readyState === 'loading') {
