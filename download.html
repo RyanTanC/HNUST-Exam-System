@@ -844,7 +844,18 @@
               btnWinEl.classList.add('disabled');
               btnWinEl.innerHTML = '⏳ 软件正在升级，请稍后…';
             } else {
-              btnWinEl.href = 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
+              // 从 Gitee release assets 中找 .exe 直链
+              var giteeAssets = giteeData.assets || [];
+              var giteeExe = null;
+              for (var j = 0; j < giteeAssets.length; j++) {
+                if (giteeAssets[j].name && giteeAssets[j].name.toLowerCase().endsWith('.exe')) {
+                  giteeExe = giteeAssets[j];
+                  break;
+                }
+              }
+              btnWinEl.href = (giteeExe && giteeExe.browser_download_url)
+                ? giteeExe.browser_download_url
+                : 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
               btnWinEl.classList.remove('disabled');
               btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
             }
