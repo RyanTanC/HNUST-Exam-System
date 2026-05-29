@@ -1082,7 +1082,7 @@
 
       // Fly back to thumbnail (read fresh rect — handles scroll/resize)
       var r = state.thumb.getBoundingClientRect();
-      state.wrapper.style.transition = 'all 0.25s cubic-bezier(.22,1,.36,1)';
+      state.wrapper.style.transition = 'left 0.25s cubic-bezier(.22,1,.36,1), top 0.25s cubic-bezier(.22,1,.36,1), width 0.25s cubic-bezier(.22,1,.36,1), height 0.25s cubic-bezier(.22,1,.36,1)';
       state.wrapper.style.left = r.left + 'px';
       state.wrapper.style.top = r.top + 'px';
       state.wrapper.style.width = r.width + 'px';
@@ -1153,12 +1153,12 @@
 
       // Create wrapper at thumbnail position (will fly to center)
       var wrapper = document.createElement('div');
-      wrapper.style.cssText = 'position:fixed;z-index:99999;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;transition:all 0.4s cubic-bezier(.34,1.56,.64,1);display:flex;align-items:center;justify-content:center;';
+      wrapper.style.cssText = 'position:fixed;z-index:99999;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;height:' + rect.height + 'px;display:flex;align-items:center;justify-content:center;';
 
       var zoomImg = document.createElement('img');
       zoomImg.src = thumb.src;
       zoomImg.alt = thumb.alt;
-      zoomImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:10px;corner-shape:superellipse;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:block;';
+      zoomImg.style.cssText = 'width:100%;height:100%;object-fit:contain;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,0.5);display:block;';
       wrapper.appendChild(zoomImg);
 
       document.body.appendChild(backdrop);
@@ -1187,14 +1187,19 @@
       state._cleanups.push(startResizeHandler(wrapper));
 
       // Animate in: backdrop fade + wrapper fly to center
+      // Double rAF ensures the browser has rendered the initial state
+      // before we set the transition and target properties.
       requestAnimationFrame(function() {
-        if (state && state.generation === sessionGen) {
-          backdrop.classList.add('active');
-          wrapper.style.left = target.x + 'px';
-          wrapper.style.top = target.y + 'px';
-          wrapper.style.width = target.w + 'px';
-          wrapper.style.height = target.h + 'px';
-        }
+        requestAnimationFrame(function() {
+          if (state && state.generation === sessionGen) {
+            backdrop.classList.add('active');
+            wrapper.style.transition = 'left 0.4s cubic-bezier(.34,1.56,.64,1), top 0.4s cubic-bezier(.34,1.56,.64,1), width 0.4s cubic-bezier(.34,1.56,.64,1), height 0.4s cubic-bezier(.34,1.56,.64,1)';
+            wrapper.style.left = target.x + 'px';
+            wrapper.style.top = target.y + 'px';
+            wrapper.style.width = target.w + 'px';
+            wrapper.style.height = target.h + 'px';
+          }
+        });
       });
 
       // Transition to OPEN after fly-in animation completes
