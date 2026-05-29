@@ -832,13 +832,29 @@
         versionEl.textContent = tag;
         dateEl.textContent = date;
 
-        if (exeAsset && exeAsset.browser_download_url) {
-          btnWinEl.href = exeAsset.browser_download_url;
-          btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
-        } else {
-          btnWinEl.href = FALLBACK_URL;
-          btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> 前往 GitHub Releases 下载';
-        }
+        // 检查 Gitee 最新 tag 是否与 GitHub 一致
+        var GITEE_API = 'https://gitee.com/api/v5/repos/ryan-tanc/hnust-exam-system/releases/latest';
+        fetch(GITEE_API)
+          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+          .then(function(giteeData) {
+            var giteeTag = giteeData.tag_name || '';
+            if (giteeTag !== tag) {
+              // 版本不一致，显示正在升级
+              btnWinEl.href = 'javascript:void(0)';
+              btnWinEl.classList.add('disabled');
+              btnWinEl.innerHTML = '⏳ 软件正在升级，请稍后…';
+            } else {
+              btnWinEl.href = 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
+              btnWinEl.classList.remove('disabled');
+              btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
+            }
+          })
+          .catch(function() {
+            // Gitee 接口异常时也指向 Gitee releases 页面
+            btnWinEl.href = 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
+            btnWinEl.classList.remove('disabled');
+            btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
+          });
 
         if (dmgAsset && dmgAsset.browser_download_url) {
           btnMacEl.href = dmgAsset.browser_download_url;
