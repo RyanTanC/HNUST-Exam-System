@@ -843,14 +843,20 @@
               btnWinEl.href = 'javascript:void(0)';
               btnWinEl.classList.add('disabled');
               btnWinEl.innerHTML = '⏳ 软件正在升级，请稍后…';
+              btnMacEl.href = 'javascript:void(0)';
+              btnMacEl.classList.add('disabled');
+              btnMacEl.innerHTML = '⏳ 软件正在升级，请稍后…';
             } else {
-              // 从 Gitee release assets 中找 .exe 直链
+              // 从 Gitee release assets 中找 .exe 和 .dmg 直链
               var giteeAssets = giteeData.assets || [];
               var giteeExe = null;
+              var giteeDmg = null;
               for (var j = 0; j < giteeAssets.length; j++) {
-                if (giteeAssets[j].name && giteeAssets[j].name.toLowerCase().endsWith('.exe')) {
+                var name = giteeAssets[j].name || '';
+                if (name.toLowerCase().endsWith('.exe')) {
                   giteeExe = giteeAssets[j];
-                  break;
+                } else if (name.toLowerCase().endsWith('.dmg')) {
+                  giteeDmg = giteeAssets[j];
                 }
               }
               btnWinEl.href = (giteeExe && giteeExe.browser_download_url)
@@ -858,6 +864,12 @@
                 : 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
               btnWinEl.classList.remove('disabled');
               btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
+
+              btnMacEl.href = (giteeDmg && giteeDmg.browser_download_url)
+                ? giteeDmg.browser_download_url
+                : 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
+              btnMacEl.classList.remove('disabled');
+              btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> macOS下载';
             }
           })
           .catch(function() {
@@ -865,15 +877,10 @@
             btnWinEl.href = 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
             btnWinEl.classList.remove('disabled');
             btnWinEl.innerHTML = '<svg class="icon icon-md"><use href="#i-windows"/></svg> Windows下载';
+            btnMacEl.href = 'https://gitee.com/ryan-tanc/hnust-exam-system/releases';
+            btnMacEl.classList.remove('disabled');
+            btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> macOS下载';
           });
-
-        if (dmgAsset && dmgAsset.browser_download_url) {
-          btnMacEl.href = dmgAsset.browser_download_url;
-          btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> macOS下载';
-        } else {
-          btnMacEl.href = FALLBACK_URL;
-          btnMacEl.innerHTML = '<svg class="icon icon-md"><use href="#i-apple"/></svg> 前往 GitHub Releases 下载';
-        }
       })
       .catch(function(err) {
         showError('获取版本信息失败: ' + (err.message || '网络错误'));
