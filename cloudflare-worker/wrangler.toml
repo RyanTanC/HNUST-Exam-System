@@ -1,0 +1,13 @@
+name = "hnust-exam-telemetry"
+main = "worker.js"
+compatibility_date = "2024-12-01"
+
+kv_namespaces = [
+  { binding = "HNUST_TELEMETRY", id = "123a97c9cf5646889d46509465c03d66" }
+]
+
+[observability]
+enabled = true
+
+  [observability.logs]
+  head_sampling_rate = 1
