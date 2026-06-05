@@ -911,7 +911,42 @@
     }
     @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
 
-    /* Reduced motion */
+    /* ================================================
+       SECTION: SPONSOR / DONATE
+       ================================================ */
+    .sponsor-section {
+      margin-top: 36px; padding-top: 28px; text-align: center;
+      opacity: 0.45; transition: opacity 0.5s ease;
+    }
+    .sponsor-section:hover { opacity: 0.85; }
+    .sponsor-divider {
+      width: 48px; height: 1px; margin: 0 auto 20px;
+      background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+    .sponsor-text {
+      font-size: 0.78rem; color: var(--text-dim); margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+    .sponsor-qr {
+      display: inline-block; padding: 10px; border-radius: 14px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(0px); backdrop-filter: blur(0px);
+      transition: transform 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease, -webkit-backdrop-filter 0.3s ease;
+    }
+    .sponsor-qr:hover {
+      transform: scale(2); border-color: rgba(var(--primary-rgb), 0.25);
+      background: rgba(255,255,255,0.07);
+      -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+    }
+    .sponsor-qr img {
+      width: 96px; height: 96px; border-radius: 8px; object-fit: contain;
+      filter: brightness(0.92); transition: filter 0.3s ease;
+    }
+    .sponsor-qr:hover img { filter: brightness(1); }
+
+    /* ================================================
+       REDUCED MOTION
+       ================================================ */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
       .js-enabled [data-reveal] { opacity: 1; transform: none; }
@@ -1447,6 +1482,15 @@
         <span class="sep">·</span>
         <span>Contributors</span>
       </div>
+      <!-- Sponsor / Donate -->
+      <div class="sponsor-section" data-reveal>
+        <div class="sponsor-divider"></div>
+        <p class="sponsor-text">如果这个项目对你有帮助，欢迎请作者喝杯奶茶 🧋</p>
+        <div class="sponsor-qr">
+          <img src="./images/pay.jpg" alt="赞助二维码" />
+        </div>
+      </div>
+
       <div class="footer-line">
         © 2026 HNUST 计算机考试仿真平台 · GPL-3.0 License · Made with AI-Assisted Development
       </div>
