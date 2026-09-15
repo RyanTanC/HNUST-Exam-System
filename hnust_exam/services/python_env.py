@@ -8,6 +8,29 @@ import subprocess
 import sys
 
 
+def _console_encoding() -> str:
+    """Windows 控制台程序（``where`` / ``py`` 等）输出的编码.
+
+    坑：Windows 控制台程序的输出走 **OEM 代码页**（中文系统 cp936、英文 cp437），
+    而 Python 3.15+ 默认开启 UTF-8 模式，此时 ``locale.getpreferredencoding()``
+    返回 ``utf-8``，于是 ``subprocess.run(..., text=True)`` 会拿 utf-8 去解 GBK 字节
+    → 抛 ``UnicodeDecodeError``。
+
+    更阴的是这个异常发生在 ``subprocess`` 的**读取线程**里：主流程不会崩，
+    但 ``result.stdout`` 会变成空字符串，结果被**静默丢弃**。
+    实测（Python 3.14.3 + 中文 Windows）：``where python`` 必崩。
+
+    所以这里显式给出 OEM 代码页，并统一配合 ``errors="replace"`` 兜底。
+    """
+    if os.name != "nt":
+        return "utf-8"
+    try:
+        import ctypes
+        return f"cp{ctypes.windll.kernel32.GetOEMCP()}"
+    except Exception:
+        return "utf-8"
+
+
 def find_system_python() -> str | None:
     """查找系统中可用的 Python 解释器路径."""
     if sys.platform != "win32":
@@ -22,7 +45,7 @@ def find_system_python() -> str | None:
         if py_path:
             result = subprocess.run(
                 [py_path, "-3", "-c", "import sys; print(sys.executable)"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True, encoding=_console_encoding(), errors="replace", timeout=5,
                 creationflags=NO_WINDOW,
             )
             if result.returncode == 0:
@@ -45,7 +68,7 @@ def find_system_python() -> str | None:
     try:
         result = subprocess.run(
             ["where", "python"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, encoding=_console_encoding(), errors="replace", timeout=5,
             creationflags=NO_WINDOW,
         )
         if result.returncode == 0:
@@ -157,7 +180,7 @@ def open_with_idle(file_path: str, python_exe: str | None = None) -> bool:
         if shutil.which("py"):
             check = subprocess.run(
                 ["py", "-3", "--version"],
-                capture_output=True, text=True, timeout=5,
+                capture_output=True, encoding=_console_encoding(), errors="replace", timeout=5,
                 creationflags=NO_WINDOW,
             )
             if check.returncode == 0 and "Python" in (check.stdout + check.stderr):
@@ -176,7 +199,7 @@ def open_with_idle(file_path: str, python_exe: str | None = None) -> bool:
             try:
                 check = subprocess.run(
                     [python_path, "--version"],
-                    capture_output=True, text=True, timeout=5,
+                    capture_output=True, encoding=_console_encoding(), errors="replace", timeout=5,
                     creationflags=NO_WINDOW,
                 )
                 if check.returncode == 0 and "Python" in (check.stdout + check.stderr):

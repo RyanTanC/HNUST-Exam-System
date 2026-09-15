@@ -10,6 +10,9 @@
 
 from __future__ import annotations
 
+import os
+import tempfile
+
 import pytest
 
 from hnust_exam.services import (
@@ -18,6 +21,29 @@ from hnust_exam.services import (
     update_lock,
 )
 from hnust_exam.utils import constants
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_configure(config) -> None:
+    """给 pytest 一个**固定**的 basetemp，别用 numbered 临时目录.
+
+    真实踩到的坑：pytest 退出时会在 ``atexit`` 里清理历史 numbered 临时目录
+    （``cleanup_numbered_dir`` → ``shutil.rmtree``）。某些环境装了**批量删除
+    安全钩子**，会把这个清理判定为可疑批量删除、直接拒绝并 ``raise SystemExit(1)``。
+    表现是**测试全绿但退出码变成 1**：
+
+        273 passed, 1 skipped in 46.72s
+        [safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED] {...}
+        Exception ignored in atexit callback <function cleanup_numbered_dir ...>
+        SystemExit: 1
+
+    很容易被误判成"某两个用例偶发失败"。指定固定 basetemp 后 pytest 不再创建
+    numbered 目录，atexit 那段清理自然也不会跑。
+    """
+    if not config.option.basetemp:
+        config.option.basetemp = os.path.join(
+            tempfile.gettempdir(), "_hnust_pytest_base"
+        )
 
 
 @pytest.fixture(autouse=True)
