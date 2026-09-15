@@ -31,4 +31,8 @@ Thumbs.db
 .claude/worktrees/
 .workbuddy-ai/
 
+# Cloudflare wrangler 本地缓存（含账户 ID / 邮箱，绝对不要上传）
+cloudflare-worker/.wrangler/
+.wrangler/
+
 #🔔 划重点：不用管这些，直接往下看介绍就好！
