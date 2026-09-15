@@ -43,6 +43,9 @@ def run() -> None:
     # 清理上次更新残留的备份文件
     from hnust_exam.services.auto_updater import clean_old_backup
     clean_old_backup()
+    # 清理残留的 staging 目录
+    from hnust_exam.services.resource_pack_updater import cleanup_staging_dirs
+    cleanup_staging_dirs()
 
     # Windows 高 DPI 感知（必须在 QApplication 之前设置）
     if sys.platform == "win32":
@@ -94,10 +97,15 @@ def run() -> None:
 
     # 启动时异步检查更新
     def _on_update_result(info):
-        if info:
-            from hnust_exam.views.dialogs.update_dialog import UpdateDialog
-            dlg = UpdateDialog(info, config_mgr, main_window)
-            dlg.exec()
+        if info is None:
+            logger.info("更新检查完成：网络不可用")
+            return
+        if info.get("no_update"):
+            logger.info("更新检查完成：已是最新版本")
+            return
+        from hnust_exam.views.dialogs.update_dialog import UpdateDialog
+        dlg = UpdateDialog(info, config_mgr, main_window)
+        dlg.exec()
 
     from hnust_exam.services.update_checker import check_update_async
     check_update_async(_on_update_result, config_mgr)

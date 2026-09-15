@@ -1,7 +1,7 @@
 {
-  "version": "2026.05.28",
-  "generated_at": "2026-05-28T15:44:52Z",
-  "total_files": 332,
+  "version": "2026.06.05.2333",
+  "generated_at": "2026-09-14T13:43:36Z",
+  "total_files": 362,
   "files": {
     "C语言-2018-2019-1本部C程序设计实验期末考试.xlsx": {
       "sha256": "9234899dbe60318a911b0ff9f00d92dbc6656f52eab853c63ad34bd4ae9adfe0",
@@ -134,29 +134,29 @@
       "modified": 1778842306
     },
     "Python理论练习题1.xlsx": {
-      "sha256": "a9c5c3e582e059925b2c5b111142ca7d978056ddf3a3e9eb2a51a0ba418b07a8",
-      "size": 15475,
-      "modified": 1777029983
+      "sha256": "98c10a65428f6de78370fe8a9a6d1cd7dfa6ca46144717e44c61d1b372cbd08e",
+      "size": 15311,
+      "modified": 1780320827
     },
     "PY实验2026-05-21-09-29.xlsx": {
       "sha256": "fcbb696157d9c6c579a9d5e0ad9ecf44309125a38b58c172e9da2be2f08d9ec4",
       "size": 6447,
-      "modified": 1779975946
+      "modified": 1780320827
     },
     "PY实验2026-05-21-16-33.xlsx": {
       "sha256": "764c786024a44eb9ce805aa49ebdeb4dfa1fdcae33628e46d553b58007375d7c",
       "size": 6760,
-      "modified": 1779975757
+      "modified": 1780320827
     },
     "PY理论2026-05-21-08-17.xlsx": {
-      "sha256": "33181dc6bdff47b15b724802b73df3277f5ca4635af0d7d5686eb590d443b1e7",
-      "size": 11166,
-      "modified": 1779953089
+      "sha256": "676f5876a9db56b6528fc322b5d50c342bbf687ef78591fbecbf124f65f8e203",
+      "size": 14534,
+      "modified": 1780477310
     },
     "PY理论2026-05-21-08-58.xlsx": {
-      "sha256": "dc5fe3dcedf9c3d6d914c87b5ff44f7bd90eb66acd6abcad93b7e5652b8e24c7",
-      "size": 14329,
-      "modified": 1779962136
+      "sha256": "f84e2a26a702aecb902e7b684d2cf00a31ae920616905aed69110c2f576ef73f",
+      "size": 15136,
+      "modified": 1780481424
     },
     "PY程序改错.xlsx": {
       "sha256": "81beb02ea1f61432fbd20a7a17de51b5bd885ca7e5e9c2fe2c5a2b0ec4159db5",
@@ -191,7 +191,7 @@
     "PY程序设计模拟题1.xlsx": {
       "sha256": "92ce96c366c9b12324139834d1ab7e8eaa4ead5304fd9d64dc9d8eb9b5ac20a4",
       "size": 15380,
-      "modified": 1779873854
+      "modified": 1780320827
     },
     "PY程序设计模拟题2.xlsx": {
       "sha256": "4afbf5f6f193e92fc575fb716671db7438788666d90e0fd2cd6c7eff085d56e1",
@@ -204,24 +204,44 @@
       "modified": 1777174479
     },
     "PY程序设计模拟题4.xlsx": {
-      "sha256": "7c7a0af0598986f3cc11219121b72c7357a8ec112a64d1bb6d62f35f0c1ed0ba",
-      "size": 17257,
-      "modified": 1778667742
+      "sha256": "a8e3f13f5b24d8f0c150b4f3bd683fc3f5917011a1133000fe36f0972f16b46f",
+      "size": 17284,
+      "modified": 1780464631
     },
     "PY程序设计模拟题5.xlsx": {
       "sha256": "84e1dcb3ec318948ce327caef24d792bd0a9ed4faabf005ad8194bfa755bc107",
       "size": 16255,
-      "modified": 1779874800
+      "modified": 1780320827
     },
     "PY选择题.xlsx": {
-      "sha256": "c87e14019f28fd35e0559e65e33126821eaee02f13e696e174a8769890ebe2bb",
-      "size": 30845,
-      "modified": 1777032220
+      "sha256": "9f254fec74bc8ce9b9eea25b52df020af04604544e179c42f371fff9a6303c6a",
+      "size": 30829,
+      "modified": 1780462844
     },
     "PY选择题练习.xlsx": {
-      "sha256": "061b880a3f1c2d93c0e1d44ac41bd88f2934179013cfba5322ff8f3805904898",
-      "size": 24118,
-      "modified": 1777032185
+      "sha256": "89c9256f3237d2137c7b180da8ec5eff42f5c2400ec4c4dba24ff185a59af73a",
+      "size": 24203,
+      "modified": 1780462748
+    },
+    "README.en.md": {
+      "sha256": "96f9b06ad08bbfad7db1d3593f55693a1ee808c919acdb7de721da3bf80f0eb5",
+      "size": 884,
+      "modified": 1780320827
+    },
+    "README.md": {
+      "sha256": "01eb3d7c21ca90e4811b43063b260be3251c8c9c465d3564cf3f15d35f3c1acc",
+      "size": 974,
+      "modified": 1780320827
+    },
+    "实验作业2026-06-04(高概率).xlsx": {
+      "sha256": "ab49b9d5529dfe2a7d73bce70fab88598b5723963e15375e14b92d5ad4a1f9b3",
+      "size": 11055,
+      "modified": 1780582049
+    },
+    "理论作业2026-06-04（高概率）.xlsx": {
+      "sha256": "0a3a268bcd3b84e1b0c265ecd40053da915e63b9c8b93fa8caa818fc0b4cdb12",
+      "size": 15029,
+      "modified": 1780676989
     },
     "试题图片/BC_001_1053_图.jpg": {
       "sha256": "ed2783a60e3fb37c46ad01291700ed266b2d5dcb3559a75a5a5b6897c7f63896",
@@ -1586,22 +1606,22 @@
     "试题文件夹/ProgPy26.py": {
       "sha256": "cd5c3ee4cd0edf83ae38dac3b4f8e82b8b0985d5a84ac95d6296daaadf83b913",
       "size": 1087,
-      "modified": 1779951600
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy27.py": {
       "sha256": "0ff04abfe6f36e2185e6844bb4ba3b477e68ef0a0b0693b590f8cd8e0733ce76",
       "size": 965,
-      "modified": 1779951600
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy28.py": {
       "sha256": "605c71ee1cfccf4b0f39dbc6b8aa5d1b215dbcc8ced4f65b59a1a3bbdac37969",
       "size": 800,
-      "modified": 1779951600
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy29.py": {
       "sha256": "cd4b6750cf1bbe2658573284a4c8318bff1328dbfcdfae8fce955b736104049d",
       "size": 803,
-      "modified": 1779951600
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy3.py": {
       "sha256": "fc3782bc22dd3d401d63b01cda3dea1749879f3599984961719fd0fb282488eb",
@@ -1611,37 +1631,172 @@
     "试题文件夹/ProgPy30.py": {
       "sha256": "5a0a7f4a1c8622561066dc11612afee1a24b327101889ded17001b2139ecae5c",
       "size": 1088,
-      "modified": 1779951600
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy31.py": {
       "sha256": "b832b0763237699fb35118c22b610fbd083812191fbca18cb484f24f59ad2758",
       "size": 587,
-      "modified": 1779952416
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy32.py": {
       "sha256": "96afa265f5a00b7de8eaeeb2f32584ff324612772ec059ecef06402642088a22",
       "size": 660,
-      "modified": 1779952416
+      "modified": 1780320827
     },
     "试题文件夹/ProgPy33.py": {
       "sha256": "297cf12617c70b41a1a3e02d9b8df4bdf161f56c397aa7d3785d36888e8d32ba",
       "size": 903,
-      "modified": 1779952416
+      "modified": 1780320827
+    },
+    "试题文件夹/ProgPy34.py": {
+      "sha256": "fe0cf08a154ceff57742fc0fba6946af196687b99af37045517d5ac649ee13fe",
+      "size": 687,
+      "modified": 1780410985
+    },
+    "试题文件夹/ProgPy35.py": {
+      "sha256": "cb01daf5d25a8f1d8f51c6936d0dbbcdaa3ebbebb4cdf7ba9f03839ce24496ea",
+      "size": 844,
+      "modified": 1780410985
+    },
+    "试题文件夹/ProgPy36.py": {
+      "sha256": "b933d6a20ac38f549a6519bbab67ba19286221f8df701e42758f7f4ddd6a5705",
+      "size": 707,
+      "modified": 1780411035
+    },
+    "试题文件夹/ProgPy37.py": {
+      "sha256": "21ee91c02d5c69cdc5ab2457a47ebb46979d6a01dfcd89e5c930afe05f31aac0",
+      "size": 954,
+      "modified": 1780411035
+    },
+    "试题文件夹/ProgPy38.py": {
+      "sha256": "d53f5daafaf6dd8617091e45cb89a3ec0084ab6392a085b946b9bac8c4da47f7",
+      "size": 585,
+      "modified": 1780411284
+    },
+    "试题文件夹/ProgPy39.py": {
+      "sha256": "4d182d57a40b35eef57fb8bcf0413e18ea26f74f052b5c28bbca71a63eaa7262",
+      "size": 657,
+      "modified": 1780411284
     },
     "试题文件夹/ProgPy4.py": {
       "sha256": "707754be0d524df6c27183b8df97d09f2c1258aff0109bab61ce1ff4a76df864",
       "size": 955,
       "modified": 1779350398
     },
+    "试题文件夹/ProgPy40.py": {
+      "sha256": "ed55952cefcdad21bb8a3467bc89709dd0b1c2250bc5879f289ad8c4f6529657",
+      "size": 892,
+      "modified": 1780411284
+    },
+    "试题文件夹/ProgPy41.py": {
+      "sha256": "b933d6a20ac38f549a6519bbab67ba19286221f8df701e42758f7f4ddd6a5705",
+      "size": 707,
+      "modified": 1780411416
+    },
+    "试题文件夹/ProgPy42.py": {
+      "sha256": "21ee91c02d5c69cdc5ab2457a47ebb46979d6a01dfcd89e5c930afe05f31aac0",
+      "size": 954,
+      "modified": 1780411416
+    },
+    "试题文件夹/ProgPy43.py": {
+      "sha256": "b933d6a20ac38f549a6519bbab67ba19286221f8df701e42758f7f4ddd6a5705",
+      "size": 707,
+      "modified": 1780412726
+    },
+    "试题文件夹/ProgPy44.py": {
+      "sha256": "21ee91c02d5c69cdc5ab2457a47ebb46979d6a01dfcd89e5c930afe05f31aac0",
+      "size": 954,
+      "modified": 1780412726
+    },
+    "试题文件夹/ProgPy45.py": {
+      "sha256": "d53f5daafaf6dd8617091e45cb89a3ec0084ab6392a085b946b9bac8c4da47f7",
+      "size": 585,
+      "modified": 1780412744
+    },
+    "试题文件夹/ProgPy46.py": {
+      "sha256": "4d182d57a40b35eef57fb8bcf0413e18ea26f74f052b5c28bbca71a63eaa7262",
+      "size": 657,
+      "modified": 1780412744
+    },
+    "试题文件夹/ProgPy47.py": {
+      "sha256": "ed55952cefcdad21bb8a3467bc89709dd0b1c2250bc5879f289ad8c4f6529657",
+      "size": 892,
+      "modified": 1780412744
+    },
+    "试题文件夹/ProgPy48.py": {
+      "sha256": "b933d6a20ac38f549a6519bbab67ba19286221f8df701e42758f7f4ddd6a5705",
+      "size": 707,
+      "modified": 1780412830
+    },
+    "试题文件夹/ProgPy49.py": {
+      "sha256": "21ee91c02d5c69cdc5ab2457a47ebb46979d6a01dfcd89e5c930afe05f31aac0",
+      "size": 954,
+      "modified": 1780412830
+    },
     "试题文件夹/ProgPy5.py": {
       "sha256": "57b9b7936eeda3c42db0003c4164d8451af8ce61d79d3e685f2da7fdc487d8fe",
       "size": 383,
       "modified": 1779350398
     },
+    "试题文件夹/ProgPy50.py": {
+      "sha256": "d53f5daafaf6dd8617091e45cb89a3ec0084ab6392a085b946b9bac8c4da47f7",
+      "size": 585,
+      "modified": 1780412830
+    },
+    "试题文件夹/ProgPy51.py": {
+      "sha256": "4d182d57a40b35eef57fb8bcf0413e18ea26f74f052b5c28bbca71a63eaa7262",
+      "size": 657,
+      "modified": 1780412830
+    },
+    "试题文件夹/ProgPy52.py": {
+      "sha256": "ed55952cefcdad21bb8a3467bc89709dd0b1c2250bc5879f289ad8c4f6529657",
+      "size": 892,
+      "modified": 1780412830
+    },
+    "试题文件夹/ProgPy53.py": {
+      "sha256": "ec0ae7aa60af2319e277b96b53054e8efaa4b3c364f8d3e78d15c2ac35fce5be",
+      "size": 1057,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy54.py": {
+      "sha256": "cf475e37b389e97af4fe10c2159de2407f3dc22ade4f73b0becf54bd74d98aac",
+      "size": 626,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy55.py": {
+      "sha256": "8fa68fc32fc95e3a5c249c3d4bba02656ccd68071b1e7e1813310b2529ab023a",
+      "size": 620,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy56.py": {
+      "sha256": "728a089ef9f067e0816e4fdece453b9bcf5d6f79cfc060127d2eb0ab64253a97",
+      "size": 695,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy57.py": {
+      "sha256": "0cded05b42a73708bb8d3260160698d9c432a7b40b2a06c0377c47bffc1242c6",
+      "size": 893,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy58.py": {
+      "sha256": "d0e81cc50a1a100673a62084ac73cfaef4699af4b46e28e0ac5e740e38edae7a",
+      "size": 1017,
+      "modified": 1780582694
+    },
+    "试题文件夹/ProgPy59.py": {
+      "sha256": "0c17912beff1f8bf1611faddb2cbcadde8452adbb75a8ea267d16a696159ed7a",
+      "size": 801,
+      "modified": 1780582694
+    },
     "试题文件夹/ProgPy6.py": {
       "sha256": "b832b0763237699fb35118c22b610fbd083812191fbca18cb484f24f59ad2758",
       "size": 587,
       "modified": 1779350407
+    },
+    "试题文件夹/ProgPy60.py": {
+      "sha256": "84ec3a83ad67f203c5817ca3fd68b2aa1f2905354e7e4274d715c9df29f6ed6a",
+      "size": 640,
+      "modified": 1780582694
     },
     "试题文件夹/ProgPy7.py": {
       "sha256": "96afa265f5a00b7de8eaeeb2f32584ff324612772ec059ecef06402642088a22",
@@ -1657,11 +1812,6 @@
       "sha256": "95cbc32d7b970cfb5c2ec764ce9de8836cf2feb1ae5b3563c4bc60d2dd5e9a17",
       "size": 709,
       "modified": 1779350412
-    },
-    "试题文件夹/PY理论2026-05-21-08-58.xlsx": {
-      "sha256": "abe72ff28b11cc167746eb4773f482b3c23a8eb4d69edca4adaf180ae54d8277",
-      "size": 9928,
-      "modified": 1779952416
     }
   }
 }

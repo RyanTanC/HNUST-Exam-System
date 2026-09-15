@@ -215,7 +215,7 @@ class WelcomePage(QWidget):
         prop = scroller.scrollerProperties()
         prop.setScrollMetric(
             QScrollerProperties.ScrollMetric.FrameRate,
-            QScrollerProperties.FrameRates.Fps60,
+            QScrollerProperties.FrameRates.Standard,
         )
         prop.setScrollMetric(
             QScrollerProperties.ScrollMetric.VerticalOvershootPolicy,

@@ -85,7 +85,14 @@
       "Bash(Select-Object -First 60)",
       "PowerShell(Test-Path *)",
       "Bash(copy *)",
-      "Bash(sqlite3 *)"
+      "Bash(sqlite3 *)",
+      "Bash(Select-String -Pattern \"## 📋 更新日志\" -Context 0,100)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Hyper_hui\\\\PycharmProjects\\\\PythonProject1\" -Depth 1)",
+      "Bash(Select-Object FullName, Mode)",
+      "mcp__windows-mcp__PowerShell",
+      "Bash(curl -s https://api.github.com/repos/RyanTanC/HNUST-Exam-System/releases/latest)",
+      "Bash(gh release *)",
+      "PowerShell(Get-Content *)"
     ]
   }
 }

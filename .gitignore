@@ -27,4 +27,8 @@ dist/
 Thumbs.db
 *.log
 
+# AI 代理工作目录与本地工具数据（体积大、仅本机有效，不要上传）
+.claude/worktrees/
+.workbuddy-ai/
+
 #🔔 划重点：不用管这些，直接往下看介绍就好！

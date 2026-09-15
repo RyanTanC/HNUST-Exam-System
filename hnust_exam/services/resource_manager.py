@@ -95,6 +95,9 @@ def ensure_initialized() -> None:
             src_sub = os.path.join(source_dir, subdir)
             if os.path.isdir(src_sub):
                 dst_sub = os.path.join(QUESTION_BANK_FILES_DIR, subdir)
+                # 如果目标目录已存在，先删除再复制（支持多实例并发）
+                if os.path.exists(dst_sub):
+                    shutil.rmtree(dst_sub)
                 shutil.copytree(src_sub, dst_sub)
         logger.info("题库同步完成（%d 个 xlsx 文件）", copied)
     except Exception as e:

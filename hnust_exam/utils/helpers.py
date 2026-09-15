@@ -34,6 +34,7 @@ def normalize_answer(ans: str, q_type: str) -> str:
     判断题将中文/布尔/数字形式统一映射为 a/b。
     """
     ans = str(ans).strip().lower()
+    ans = re.sub(r"^【[^】]*】\s*", "", ans)
     if q_type == "判断":
         mapping = {
             "对": "a", "错": "b", "t": "a", "f": "b",

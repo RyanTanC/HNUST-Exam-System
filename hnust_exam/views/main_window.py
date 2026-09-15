@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect, QAbstractAnimation
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QRect
 from PySide6.QtGui import QIcon, QShortcut, QKeySequence, QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -86,9 +86,10 @@ class MainWindow(QMainWindow):
 
         current_geometry = self.stack.geometry()
 
-        animation = QPropertyAnimation(self.stack, b"geometry")
-        animation.setDuration(300)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
+        # 保存为实例变量，防止动画播放期间被 GC 回收导致页面空白
+        self._page_animation = QPropertyAnimation(self.stack, b"geometry")
+        self._page_animation.setDuration(300)
+        self._page_animation.setEasingCurve(QEasingCurve.OutCubic)
 
         if page_index > current_index:
             start_x = current_geometry.width()
@@ -98,11 +99,11 @@ class MainWindow(QMainWindow):
         start_rect = QRect(start_x, 0, current_geometry.width(), current_geometry.height())
         end_rect = QRect(0, 0, current_geometry.width(), current_geometry.height())
 
-        animation.setStartValue(start_rect)
-        animation.setEndValue(end_rect)
+        self._page_animation.setStartValue(start_rect)
+        self._page_animation.setEndValue(end_rect)
 
         self.stack.setCurrentIndex(page_index)
-        animation.start(QAbstractAnimation.DeleteWhenStopped)
+        self._page_animation.start()
 
     def show_welcome(self) -> None:
         self.switch_to_page(self.PAGE_WELCOME)

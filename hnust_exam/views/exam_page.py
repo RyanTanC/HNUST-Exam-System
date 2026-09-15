@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal, QThread, QObject
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -19,11 +19,12 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QScrollArea,
     QMessageBox,
+    QProgressDialog,
 )
 
 from hnust_exam.models.exam import Exam
 from hnust_exam.models.result import Result
-from hnust_exam.services.backup_manager import BackupManager
+from hnust_exam.services.backup_manager import BackupManager, _validate_program_file_path
 from hnust_exam.utils.constants import EXAM_TIME_SECONDS
 from hnust_exam.utils.theme import Theme
 from hnust_exam.utils.helpers import get_resource_path
@@ -33,6 +34,25 @@ from hnust_exam.services.telemetry import send_submit_score
 
 if TYPE_CHECKING:
     from hnust_exam.views.main_window import MainWindow
+
+
+class GradingWorker(QObject):
+    """在后台线程执行判分，不阻塞 UI."""
+
+    finished = Signal(object)
+
+    def __init__(self, exam: Exam, strictness: str = "normal") -> None:
+        super().__init__()
+        self.exam = exam
+        self.strictness = strictness
+
+    def run(self) -> None:
+        from hnust_exam.services.grader import grade_exam
+        try:
+            results = grade_exam(self.exam, strictness=self.strictness)
+        except Exception:
+            results = []
+        self.finished.emit(results)
 
 
 class ExamPage(QWidget):
@@ -49,6 +69,8 @@ class ExamPage(QWidget):
         self.show_answer_immediately: bool = False
         self._device_id: str = ""
         self.backup_mgr = BackupManager()
+        self._grading_thread: QThread | None = None
+        self._progress_dialog: QProgressDialog | None = None
 
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._tick)
@@ -235,6 +257,7 @@ class ExamPage(QWidget):
         # 加载设置
         cfg = self.main_window.config_mgr.load_config()
         self.show_answer_immediately = cfg.get("show_answer_immediately", False)
+        self.auto_advance_on_choice = cfg.get("auto_advance_on_choice", False)
         self._device_id = cfg.get("device_id", "")
 
         # 检查 Python 环境（程序题需要）
@@ -384,19 +407,23 @@ class ExamPage(QWidget):
                 f"color: {c['TEXT']}; font-size: 14pt; font-weight: bold; padding: 0 20px;"
             )
 
+    def _grade_exam(self) -> list[Result]:
+        """按设置中的判分严格度执行判分."""
+        cfg = self.main_window.config_mgr.load_config()
+        strictness = cfg.get("grading_strictness", "normal")
+        return self.exam.grade(strictness=strictness)
+
     def _force_submit(self) -> None:
         if self.exam_submitted:
             return
+        self.question_widget.save_current_answer()
         self.timer_running = False
         self._timer.stop()
         self.exam_submitted = True
         self.time_label.setText("00:00:00")
         themed_info(self, "提示", "考试时间到！系统将自动交卷。")
-        results = self.exam.grade()
-        score_pct = self._calc_score_pct(results)
-        self._save_exam_progress("completed", score_pct)
-        self._report_score(score_pct)
-        self._show_result(results)
+        self._show_progress_dialog()
+        self._start_async_grading()
 
     # ── 导航操作 ──────────────────────────────────────────────
 
@@ -514,7 +541,9 @@ class ExamPage(QWidget):
             return
 
         program_file = q.program_file
-        if ".." in program_file or program_file.startswith(("/", "\\")):
+        try:
+            program_file = _validate_program_file_path(program_file)
+        except ValueError:
             themed_critical(self, "错误", "不允许的文件路径")
             return
 
@@ -597,15 +626,13 @@ class ExamPage(QWidget):
         from hnust_exam.views.dialogs.submit_dialog import SubmitDialog
         dlg = SubmitDialog(self.exam, self)
         if dlg.exec():
+            if self.exam_submitted:
+                return
             self.timer_running = False
             self._timer.stop()
             self.exam_submitted = True
-            self.backup_mgr.cleanup()
-            results = self.exam.grade()
-            score_pct = self._calc_score_pct(results)
-            self._save_exam_progress("completed", score_pct)
-            self._report_score(score_pct)
-            self._show_result(results)
+            self._show_progress_dialog()
+            self._start_async_grading()
         elif dlg.check_marked_index is not None:
             self.jump_to(dlg.check_marked_index)
 
@@ -615,8 +642,50 @@ class ExamPage(QWidget):
         total = sum(r.score for r in results)
         if total == 0:
             return 0.0
-        earned = sum(r.score for r in results if r.is_correct)
+        earned = sum(r.earned_score for r in results)
         return earned / total * 100
+
+    def _show_progress_dialog(self) -> None:
+        """判分期间显示进度对话框."""
+        self._progress_dialog = QProgressDialog("正在判分，请稍候...", None, 0, 0, self)
+        self._progress_dialog.setWindowModality(Qt.WindowModal)
+        self._progress_dialog.setCancelButton(None)
+        self._progress_dialog.setWindowTitle("判分中")
+        self._progress_dialog.setMinimumDuration(0)
+        self._progress_dialog.show()
+
+    def _start_async_grading(self) -> None:
+        """在后台线程中执行判分，不阻塞 UI."""
+        cfg = self.main_window.config_mgr.load_config()
+        strictness = cfg.get("grading_strictness", "normal")
+
+        self._grading_thread = QThread(self)
+        worker = GradingWorker(self.exam, strictness)
+        worker.moveToThread(self._grading_thread)
+        self._grading_thread.started.connect(worker.run)
+        worker.finished.connect(self._on_grading_done)
+        worker.finished.connect(self._grading_thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        self._grading_thread.finished.connect(self._grading_thread.deleteLater)
+        self._grading_thread.start()
+
+    def _on_grading_done(self, results: list[Result]) -> None:
+        """判分完成后在主线程中执行后续操作."""
+        try:
+            if self._progress_dialog:
+                self._progress_dialog.close()
+                self._progress_dialog = None
+            self.backup_mgr.cleanup()
+            score_pct = self._calc_score_pct(results)
+            self._save_exam_progress("completed", score_pct)
+            self._report_score(score_pct)
+            self._show_result(results)
+        except Exception:
+            import logging
+            logging.getLogger(__name__).exception("判分完成后处理失败")
+            if self._progress_dialog:
+                self._progress_dialog.close()
+                self._progress_dialog = None
 
     def _report_score(self, score_pct: float) -> None:
         """上报成绩到统计服务（静默，不阻塞）."""
@@ -633,7 +702,7 @@ class ExamPage(QWidget):
     def _show_result(self, results: list[Result] | None = None) -> None:
         """显示成绩页."""
         if results is None:
-            results = self.exam.grade()
+            results = self._grade_exam()
         self.main_window.result_page.setup_results(results, self.exam)
         self.main_window.show_result()
 

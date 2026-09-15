@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QScroller,
@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from hnust_exam.models.question import Question
+from hnust_exam.services.grader import check_fill_in
 from hnust_exam.utils.helpers import normalize_answer
 from hnust_exam.utils.theme import Theme
 
@@ -41,6 +42,9 @@ class QuestionWidget(QWidget):
         self._answer_text: QTextEdit | None = None
         self._answer_entry: QLineEdit | None = None
         self._answer_card: QFrame | None = None
+        self._auto_advance_timer = QTimer(self)
+        self._auto_advance_timer.setSingleShot(True)
+        self._auto_advance_timer.timeout.connect(self.exam_page.jump_next_unanswered)
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -173,6 +177,8 @@ class QuestionWidget(QWidget):
 
     def show_question(self) -> None:
         """显示当前题目."""
+        self._auto_advance_timer.stop()
+
         exam = self.exam_page.exam
         if not exam:
             return
@@ -355,6 +361,7 @@ class QuestionWidget(QWidget):
                 f"border: 1px solid {c['BORDER']}; border-radius: 4px; "
                 f"font-size: 11pt; padding: 4px 8px;"
             )
+            self._answer_entry.editingFinished.connect(lambda n=global_num: self._on_fill_in_finished(n))
             self._answer_layout.addWidget(self._answer_entry)
 
     def _populate_images(self, q: Question, c: dict) -> None:
@@ -468,6 +475,35 @@ class QuestionWidget(QWidget):
 
         self.exam_page.nav_panel.refresh()
         self.exam_page._update_progress()
+        self._schedule_auto_advance()
+
+    def _schedule_auto_advance(self) -> None:
+        """按反馈模式延迟触发一次下一未答."""
+        self._auto_advance_timer.stop()
+        if not self.exam_page.auto_advance_on_choice:
+            return
+
+        delay_ms = 700 if self.exam_page.show_answer_immediately else 200
+        self._auto_advance_timer.start(delay_ms)
+
+    def _on_fill_in_finished(self, global_num: str) -> None:
+        """普通填空题输入完成后，答对则跳到下一未答."""
+        exam = self.exam_page.exam
+        if not exam or self._answer_entry is None:
+            return
+
+        q = exam.get_question(exam.current_index)
+        if not q or q.number != global_num or q.q_type != "填空":
+            return
+
+        answer = self._answer_entry.text().strip()
+        exam.set_answer(global_num, answer)
+        self.exam_page.nav_panel.refresh()
+        self.exam_page._update_progress()
+
+        is_correct, _, _ = check_fill_in(answer, q.correct_answer)
+        if is_correct:
+            self._schedule_auto_advance()
 
     def save_current_answer(self) -> None:
         """保存当前文本输入的答案."""

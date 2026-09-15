@@ -427,11 +427,12 @@ class UpdateDialog(QDialog):
     def _on_update(self) -> None:
         url = self._info.get("download_url", "")
 
-        # 没有可下载的 exe asset 时，打开 Release 页面让用户手动下载
+        # 没有可下载的 exe asset 时，打开降级页（或 Release 页）让用户手动下载
         if not self._info.get("download_available", False):
-            release_url = self._info.get("release_url", url)
-            if release_url:
-                webbrowser.open(release_url)
+            fallback_url = self._info.get("fallback_url", "")
+            target_url = fallback_url or self._info.get("release_url", url)
+            if target_url:
+                webbrowser.open(target_url)
             self.accept()
             return
 

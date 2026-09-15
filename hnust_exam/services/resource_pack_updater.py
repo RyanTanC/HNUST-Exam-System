@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import glob
+import datetime
 import hashlib
 import json
 import logging
@@ -14,7 +16,7 @@ import shutil
 import time
 import zipfile
 from dataclasses import dataclass
-from threading import Thread, Lock
+from threading import Thread
 from typing import Callable
 
 import requests
@@ -22,18 +24,19 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from PySide6.QtCore import QObject, Qt, Signal
 
+from hnust_exam.services.update_lock import UpdateLock
 from hnust_exam.utils.constants import (
     GITEE_REPO_NAME,
     GITEE_USERNAME,
     QUESTION_BANK_DIR,
     QUESTION_BANK_FILES_DIR,
+    QUESTION_BANK_VERSION_PATTERN,
 )
 
 logger = logging.getLogger(__name__)
 
 # ── 常量 ──────────────────────────────────────────────────────────────
 
-_STAGING_DIR = os.path.join(QUESTION_BANK_DIR, "staging")
 _BACKUP_DIR = os.path.join(QUESTION_BANK_DIR, "files_backup")
 _CURRENT_VERSION_FILE = os.path.join(QUESTION_BANK_DIR, "current_version")
 _ZIP_FILENAME = "question_bank.zip"
@@ -104,6 +107,21 @@ def _parse_sha256_file(content: str) -> str:
     # 取第一行，按空格分割，第一段是哈希
     first_line = content.splitlines()[0].strip()
     return first_line.split()[0] if first_line else ""
+
+
+def _validate_version_tag(tag: str) -> bool:
+    """校验版本号格式是否合法."""
+    if not tag:
+        return False
+    return bool(QUESTION_BANK_VERSION_PATTERN.match(tag))
+
+
+def _make_staging_dir(base_dir: str) -> str:
+    """创建带时间戳的唯一 staging 目录."""
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    staging = os.path.join(base_dir, f"staging_{timestamp}")
+    os.makedirs(staging, exist_ok=True)
+    return staging
 
 
 # ── Gitee Release 查询 ───────────────────────────────────────────────
@@ -229,7 +247,17 @@ def _download_to_file(
     return True
 
 
-# ── 安全删除 ───────────────────────────────────────────────────────────
+# ── 安全文件操作 ─────────────────────────────────────────────────────────
+
+def _safe_extract_zip(zf: zipfile.ZipFile, extract_dir: str) -> None:
+    """安全解压 zip，拒绝写出目标目录的成员路径."""
+    base_dir = os.path.abspath(extract_dir)
+    for member in zf.infolist():
+        target = os.path.abspath(os.path.join(base_dir, member.filename))
+        if target != base_dir and not target.startswith(base_dir + os.sep):
+            raise ValueError(f"Zip path traversal: {member.filename}")
+    zf.extractall(base_dir)
+
 
 def _safe_remove(path: str) -> None:
     """安全删除文件."""
@@ -251,26 +279,33 @@ def _safe_rmtree(path: str) -> None:
 
 # ── 核心更新流程 ───────────────────────────────────────────────────────
 
-_CHECK_LOCK = Lock()
-_IS_CHECKING = False
-
 
 def is_updating() -> bool:
-    """整包更新是否正在进行."""
-    with _CHECK_LOCK:
-        return _IS_CHECKING
+    """整包更新是否正在进行（检查文件锁）."""
+    lock = UpdateLock("question_bank_update")
+    locked = lock.acquire(blocking=False)
+    if locked:
+        lock.release()
+        return False
+    return True
 
 
 def _do_update(
     progress_callback: Callable[[int, int], None] | None = None,
+    status_callback: Callable[[str], None] | None = None,
+    force_update: bool = False,
 ) -> PackUpdateResult:
-    """执行整包更新：查询 → 下载 → 校验 → 解压 → 替换."""
-    global _IS_CHECKING
+    """执行整包更新：查询 → 下载 → 校验 → 解压 → 替换.
 
-    with _CHECK_LOCK:
-        if _IS_CHECKING:
-            return PackUpdateResult(False, "整包更新正在进行中...", error_type="duplicate")
-        _IS_CHECKING = True
+    Parameters
+    ----------
+    progress_callback : 下载进度回调 (downloaded, total)。
+    status_callback : 阶段状态回调 (status_text)，用于告知 UI 当前处于什么阶段。
+    force_update : 是否强制更新。
+    """
+    lock = UpdateLock("question_bank_update")
+    if not lock.acquire(timeout=10):
+        return PackUpdateResult(False, "另一个更新进程正在运行", error_type="duplicate")
 
     try:
         session = _make_session()
@@ -284,17 +319,24 @@ def _do_update(
             )
 
         remote_tag = release["tag_name"]
+
+        # 版本号格式校验
+        if not _validate_version_tag(remote_tag):
+            logger.error("远程版本号格式非法: %s", remote_tag)
+            return PackUpdateResult(
+                False, f"版本号格式错误: {remote_tag}", error_type="verify",
+            )
+
         local_ver = _get_local_version()
-        if remote_tag == local_ver:
+        if remote_tag == local_ver and not force_update:
             logger.info("题库已是最新版本: %s", remote_tag)
             return PackUpdateResult(True, "题库已是最新", new_version=remote_tag)
 
         logger.info("发现新版题库: %s -> %s", local_ver or "(首次)", remote_tag)
 
-        # 2. 下载 zip 到 staging
-        os.makedirs(_STAGING_DIR, exist_ok=True)
-        zip_path = os.path.join(_STAGING_DIR, _ZIP_FILENAME)
-        _safe_remove(zip_path)
+        # 2. 使用唯一 staging 目录下载
+        staging_dir = _make_staging_dir(QUESTION_BANK_DIR)
+        zip_path = os.path.join(staging_dir, _ZIP_FILENAME)
 
         logger.info("开始下载 %s (%d bytes)...", _ZIP_FILENAME, release["zip_size"])
         ok = _download_to_file(
@@ -303,10 +345,16 @@ def _do_update(
             progress_callback=progress_callback,
         )
         if not ok:
-            _safe_rmtree(_STAGING_DIR)
+            logger.error(
+                "下载失败: url=%s, expected_size=%d, staging_dir=%s",
+                release["zip_url"], release["zip_size"], staging_dir,
+            )
+            _safe_rmtree(staging_dir)
             return PackUpdateResult(False, "下载失败", error_type="download")
 
         logger.info("下载完成: %s", zip_path)
+        if status_callback:
+            status_callback("校验文件完整性...")
 
         # 3. SHA256 校验
         if release["hash_url"]:
@@ -321,10 +369,10 @@ def _do_update(
 
                 if expected_hash and actual_hash != expected_hash:
                     logger.error(
-                        "SHA256 校验失败: 期望 %s..., 实际 %s...",
-                        expected_hash[:16], actual_hash[:16],
+                        "SHA256 校验失败: expected=%s..., actual=%s..., file=%s",
+                        expected_hash[:16], actual_hash[:16], zip_path,
                     )
-                    _safe_rmtree(_STAGING_DIR)
+                    _safe_rmtree(staging_dir)
                     return PackUpdateResult(
                         False, "SHA256 校验失败，文件可能损坏", error_type="verify",
                     )
@@ -334,20 +382,23 @@ def _do_update(
         else:
             logger.warning("Release 中无 SHA256 校验文件，跳过校验")
 
+        if status_callback:
+            status_callback("解压文件中...")
+
         # 4. 解压到 staging
-        extract_dir = os.path.join(_STAGING_DIR, "extracted")
-        _safe_rmtree(extract_dir)
+        extract_dir = os.path.join(staging_dir, "extracted")
+        os.makedirs(extract_dir, exist_ok=True)
 
         logger.info("解压 %s...", _ZIP_FILENAME)
         try:
             with zipfile.ZipFile(zip_path, "r") as zf:
-                zf.extractall(extract_dir)
-        except (zipfile.BadZipFile, OSError) as e:
+                _safe_extract_zip(zf, extract_dir)
+        except (zipfile.BadZipFile, OSError, ValueError) as e:
             logger.error("解压失败: %s", e)
-            _safe_rmtree(_STAGING_DIR)
+            _safe_rmtree(staging_dir)
             return PackUpdateResult(False, f"解压失败: {e}", error_type="extract")
 
-        # 5. 验证解压内容（至少有一个 xlsx）
+        # 5. 验证解压内容
         xlsx_found = False
         for root, dirs, files in os.walk(extract_dir):
             for f in files:
@@ -359,31 +410,21 @@ def _do_update(
 
         if not xlsx_found:
             logger.error("解压内容中未找到 xlsx 文件")
-            _safe_rmtree(_STAGING_DIR)
+            _safe_rmtree(staging_dir)
             return PackUpdateResult(
                 False, "压缩包中未找到试卷文件", error_type="verify",
             )
 
-        # 6. 原子替换：清缓存 → 备份旧目录 → 移入新目录
+        if status_callback:
+            status_callback("更新文件中...")
+
+        # 6. 原子替换（添加重试机制）
         logger.info("原子替换题库目录...")
-        # 释放 pandas/openpyxl 可能持有的文件句柄，避免 Windows 文件锁
         import gc
         gc.collect()
         _safe_rmtree(_BACKUP_DIR)
 
-        if os.path.isdir(QUESTION_BANK_FILES_DIR):
-            try:
-                os.replace(QUESTION_BANK_FILES_DIR, _BACKUP_DIR)
-            except OSError as e:
-                logger.error("备份旧题库失败: %s", e)
-                _safe_rmtree(_STAGING_DIR)
-                return PackUpdateResult(
-                    False, f"备份旧题库失败: {e}", error_type="unknown",
-                )
-
-        # 将解压内容移到 files/
-        # zip 内可能有一层根目录（如 question_bank/），也可能是直接的文件
-        # 检测逻辑：如果解压目录下只有一个子目录且包含 xlsx，则用该子目录
+        # 找源目录（zip 可能有一层根目录）
         source_dir = extract_dir
         entries = os.listdir(extract_dir)
         if len(entries) == 1 and os.path.isdir(os.path.join(extract_dir, entries[0])):
@@ -395,38 +436,68 @@ def _do_update(
             if candidate_xlsx:
                 source_dir = candidate
 
-        try:
-            os.replace(source_dir, QUESTION_BANK_FILES_DIR)
-        except OSError as e:
-            logger.error("替换题库目录失败，尝试回滚: %s", e)
-            # 回滚：恢复备份
-            if os.path.isdir(_BACKUP_DIR):
-                try:
-                    os.replace(_BACKUP_DIR, QUESTION_BANK_FILES_DIR)
-                    logger.info("回滚成功")
-                except OSError:
-                    logger.error("回滚失败！题库可能不可用")
-            _safe_rmtree(_STAGING_DIR)
-            return PackUpdateResult(False, f"替换失败: {e}", error_type="unknown")
+        # 备份旧目录
+        if os.path.isdir(QUESTION_BANK_FILES_DIR):
+            try:
+                os.replace(QUESTION_BANK_FILES_DIR, _BACKUP_DIR)
+            except OSError as e:
+                logger.error("备份旧题库失败: %s", e)
+                _safe_rmtree(staging_dir)
+                return PackUpdateResult(
+                    False, f"备份旧题库失败: {e}", error_type="unknown",
+                )
 
-        # 7. 清理：强制删除旧备份和暂存目录
-        gc.collect()
-        _safe_rmtree(_BACKUP_DIR)
-        _safe_rmtree(_STAGING_DIR)
+        # 重试替换（处理 Windows 文件锁）
+        max_replace_retries = 5
+        replace_success = False
+        for attempt in range(max_replace_retries):
+            try:
+                os.replace(source_dir, QUESTION_BANK_FILES_DIR)
+                replace_success = True
+                break
+            except OSError as e:
+                if attempt < max_replace_retries - 1:
+                    logger.warning(
+                        "替换失败 (attempt %d/%d): source=%s, target=%s, error=%s",
+                        attempt + 1, max_replace_retries,
+                        source_dir, QUESTION_BANK_FILES_DIR, e,
+                    )
+                    time.sleep(1)
+                    gc.collect()
+                else:
+                    logger.error("替换题库目录失败，尝试回滚: %s", e)
+                    if os.path.isdir(_BACKUP_DIR):
+                        try:
+                            os.replace(_BACKUP_DIR, QUESTION_BANK_FILES_DIR)
+                            logger.info("回滚成功")
+                        except OSError:
+                            logger.error("回滚失败！题库可能不可用")
+                    _safe_rmtree(staging_dir)
+                    return PackUpdateResult(
+                        False, f"替换失败: {e}", error_type="unknown",
+                    )
+
+        # 7. 清理
+        if replace_success:
+            gc.collect()
+            _safe_rmtree(_BACKUP_DIR)
+        _safe_rmtree(staging_dir)
 
         # 8. 保存版本号
         _save_local_version(remote_tag)
 
-        # 9. 更新 manifest.json（供 question_bank_updater 增量更新使用）
-        _regenerate_manifest(QUESTION_BANK_FILES_DIR)
+        # 9. 更新 manifest.json
+        _regenerate_manifest(QUESTION_BANK_FILES_DIR, remote_tag)
 
         logger.info("题库整包更新完成: %s", remote_tag)
         return PackUpdateResult(True, f"题库已更新至 {remote_tag}", new_version=remote_tag)
 
     except Exception as e:
         logger.error("整包更新异常: %s", e, exc_info=True)
-        _safe_rmtree(_STAGING_DIR)
-        # 尝试回滚
+        try:
+            _safe_rmtree(staging_dir)
+        except NameError:
+            pass
         if os.path.isdir(_BACKUP_DIR):
             try:
                 if not os.path.isdir(QUESTION_BANK_FILES_DIR):
@@ -436,11 +507,18 @@ def _do_update(
                 pass
         return PackUpdateResult(False, f"更新失败: {e}", error_type="unknown")
     finally:
-        _IS_CHECKING = False
+        lock.release()
 
 
-def _regenerate_manifest(files_dir: str) -> None:
-    """更新后重新生成本地 manifest.json（简化版，只记录文件列表）."""
+def _regenerate_manifest(files_dir: str, version: str = "") -> None:
+    """更新后重新生成本地 manifest.json（简化版，只记录文件列表）.
+
+    Parameters
+    ----------
+    files_dir : 题库文件目录。
+    version : 本次更新到的版本号（YYYY.MM.DD.HHMM）。传入后写入 manifest，
+        保证本地 manifest 的 version 与整包版本体系一致。
+    """
     from hnust_exam.utils.constants import MANIFEST_FILE
     try:
         files_info = {}
@@ -461,7 +539,7 @@ def _regenerate_manifest(files_dir: str) -> None:
                             "size": os.path.getsize(subpath),
                         }
 
-        manifest = {"version": 1, "files": files_info}
+        manifest = {"version": version, "files": files_info}
         os.makedirs(os.path.dirname(MANIFEST_FILE), exist_ok=True)
         tmp = MANIFEST_FILE + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
@@ -472,12 +550,28 @@ def _regenerate_manifest(files_dir: str) -> None:
         logger.error("更新 manifest 失败: %s", e)
 
 
+def cleanup_staging_dirs() -> None:
+    """启动时清理残留的 staging 目录（超过 1 小时的认为是残留）."""
+    pattern = os.path.join(QUESTION_BANK_DIR, "staging_*")
+    for path in glob.glob(pattern):
+        if os.path.isdir(path):
+            try:
+                mtime = os.path.getmtime(path)
+                age = time.time() - mtime
+                if age > 3600:
+                    logger.info("清理残留 staging 目录: %s (age=%.0fs)", path, age)
+                    shutil.rmtree(path)
+            except OSError:
+                pass
+
+
 # ── Qt 信号 ────────────────────────────────────────────────────────────
 
 class _PackUpdateSignal(QObject):
     """将更新结果派发到主线程."""
     result = Signal(object)
     progress = Signal(int, int)  # downloaded, total
+    status = Signal(str)  # 阶段状态文本
 
 
 # ── 公开入口 ───────────────────────────────────────────────────────────
@@ -485,27 +579,51 @@ class _PackUpdateSignal(QObject):
 def check_pack_update_async(
     callback: Callable[[PackUpdateResult], None] | None = None,
     progress_callback: Callable[[int, int], None] | None = None,
+    status_callback: Callable[[str], None] | None = None,
+    force_update: bool = False,
 ) -> None:
     """异步检查并执行整包更新（后台线程，幂等安全）.
 
     Parameters
     ----------
     callback : 可选回调，接收 PackUpdateResult（通过 Qt Signal 派发到主线程）。
-    progress_callback : 可选进度回调，接收 (downloaded_bytes, total_bytes)。
+    progress_callback : 可选下载进度回调，接收 (downloaded_bytes, total_bytes)。
+    status_callback : 可选阶段状态回调，接收状态文本（通过 Qt Signal 派发到主线程）。
+    force_update : 是否强制更新（跳过版本比较，直接下载覆盖）。
     """
+    need_signal = (
+        callback is not None or progress_callback is not None or status_callback is not None
+    )
     sig: _PackUpdateSignal | None = None
-    if callback is not None:
+    if need_signal:
         sig = _PackUpdateSignal()
-        sig.result.connect(callback, Qt.ConnectionType.QueuedConnection)
+        if callback is not None:
+            sig.result.connect(callback, Qt.ConnectionType.QueuedConnection)
+        if progress_callback is not None:
+            sig.progress.connect(progress_callback, Qt.ConnectionType.QueuedConnection)
+        if status_callback is not None:
+            sig.status.connect(status_callback, Qt.ConnectionType.QueuedConnection)
 
     def _worker() -> None:
         try:
-            result = _do_update(progress_callback=progress_callback)
-            if sig is not None:
+            def _safe_progress(d: int, t: int) -> None:
+                if sig is not None:
+                    sig.progress.emit(d, t)
+
+            def _safe_status(text: str) -> None:
+                if sig is not None:
+                    sig.status.emit(text)
+
+            result = _do_update(
+                progress_callback=_safe_progress if progress_callback else None,
+                status_callback=_safe_status if status_callback else None,
+                force_update=force_update,
+            )
+            if sig is not None and callback is not None:
                 sig.result.emit(result)
         except Exception as e:
             logger.error("整包更新线程崩溃: %s", e, exc_info=True)
-            if sig is not None:
+            if sig is not None and callback is not None:
                 sig.result.emit(
                     PackUpdateResult(False, f"更新失败: {e}", error_type="unknown"),
                 )

@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from hnust_exam.models.result import Result
 from hnust_exam.utils.theme import Theme
+from hnust_exam.utils.ui_helpers import themed_info
 
 if TYPE_CHECKING:
     from hnust_exam.models.exam import Exam
@@ -270,7 +271,18 @@ class ResultPage(QWidget):
         self._footer_frame.setStyleSheet(f"{_NB}background:{c['BG']};")
         lay = QHBoxLayout(self._footer_frame)
         lay.setContentsMargins(40, 12, 40, 16)
+        lay.setSpacing(12)
         lay.addStretch()
+
+        self._export_btn = QPushButton("导出错题")
+        self._export_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._export_btn.setStyleSheet(
+            f"background:{c['SURFACE']};color:{c['TEXT']};font-size:11pt;"
+            f"font-weight:bold;padding:10px 28px;"
+            f"border:1px solid {c['BORDER']};border-radius:6px;"
+        )
+        self._export_btn.clicked.connect(self._on_export_wrong)
+        lay.addWidget(self._export_btn)
 
         self._back_btn = QPushButton("返回选卷")
         self._back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -299,6 +311,11 @@ class ResultPage(QWidget):
         )
         self._table_sep.setStyleSheet(f"{_NB}background:{c['BORDER']};")
         self._footer_frame.setStyleSheet(f"{_NB}background:{c['BG']};")
+        self._export_btn.setStyleSheet(
+            f"background:{c['SURFACE']};color:{c['TEXT']};font-size:11pt;"
+            f"font-weight:bold;padding:10px 28px;"
+            f"border:1px solid {c['BORDER']};border-radius:6px;"
+        )
         self._back_btn.setStyleSheet(
             f"background:{c['PRIMARY']};color:#fff;font-size:11pt;"
             f"font-weight:bold;padding:10px 32px;border:none;border-radius:6px;"
@@ -315,7 +332,7 @@ class ResultPage(QWidget):
         c = Theme.get_current_colors()
 
         total = sum(r.score for r in results) or 1
-        earned = sum(r.score for r in results if r.is_correct)
+        earned = sum(r.earned_score for r in results)
         correct_n = sum(1 for r in results if r.is_correct)
         wrong_n = len(results) - correct_n
         pct = earned / total * 100
@@ -462,6 +479,24 @@ class ResultPage(QWidget):
             dlg.exec()
         except Exception as e:
             print(f"[ReviewDialog] 打开失败: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _on_export_wrong(self) -> None:
+        """导出错题和标记题."""
+        if not self._results or not self._exam:
+            return
+        has_wrong = any(not r.is_correct for r in self._results)
+        has_marked = bool(self._exam.marked_indices)
+        if not has_wrong and not has_marked:
+            themed_info(self, "提示", "没有错题和标记题目。")
+            return
+        try:
+            from hnust_exam.views.dialogs.export_wrong_dialog import ExportWrongDialog
+            dlg = ExportWrongDialog(self._results, self._exam, self)
+            dlg.exec()
+        except Exception as e:
+            print(f"[ExportWrongDialog] 打开失败: {e}")
             import traceback
             traceback.print_exc()
 

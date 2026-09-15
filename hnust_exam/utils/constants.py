@@ -1,14 +1,21 @@
 """全局常量定义."""
 
 import os
+import re
 
-CURRENT_VERSION = "v1.1.5"
+
+CURRENT_VERSION = "v1.1.8"
 GITHUB_USERNAME = "RyanTanC"
 GITHUB_REPO_NAME = "HNUST-Exam-System"
 
 # 题库热更新（独立 Gitee 仓库）
 GITEE_USERNAME = "ryan-tanc"
 GITEE_REPO_NAME = "hnust-computer-exam-tiku"
+
+# 更新检查与下载（GitHub 查版本，Gitee 下载 exe）
+GITEE_OWNER = "ryan-tanc"
+GITEE_UPDATE_REPO = "hnust-exam-system"
+FALLBACK_DOWNLOAD_URL = "https://ryantanc.github.io/HNUST-Exam-System/download.html"
 
 _CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".hnust_exam")
 CONFIG_FILE = os.path.join(_CONFIG_DIR, "config.json")
@@ -41,3 +48,8 @@ OPTIONAL_COLUMNS = {
 
 # 匿名使用统计 Worker 地址
 TELEMETRY_BASE_URL = "https://hnust-exam-telemetry.hnust-exam-stats.workers.dev"
+
+# 版本号格式校验（题库热更新用）
+# 合法格式：YYYY.MM.DD.HHMM（如 2026.06.01.1823）
+# 非法格式：2026.06.0.1703（月/日为 0）
+QUESTION_BANK_VERSION_PATTERN = re.compile(r"^\d{4}\.\d{2}\.\d{2}\.\d{4}$")

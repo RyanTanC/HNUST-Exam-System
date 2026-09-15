@@ -23,10 +23,10 @@
 
 - Python
 - PySide6
+- PySide6-Fluent-Widgets（qfluentwidgets，设置页等界面组件）
 - pandas
 - openpyxl
 - requests
-- Pillow
 - pytest
 - PyInstaller
 
@@ -44,7 +44,7 @@
 - `题库/`：Excel 试卷和程序题源文件目录，是核心资源。
 - `tests/`：自动测试，当前主要覆盖判分和配置读写。
 - `docs/TELEMETRY.md`：遥测相关说明。
-- `backup.py`、`exam_system.py`：旧版或备份代码。除非用户明确要求，不要修改、删除或以它们为新功能入口。
+- `backup.py`：旧版或备份代码。除非用户明确要求，不要修改、删除或以它为新功能入口。
 
 核心包 `hnust_exam/`：
 
@@ -111,17 +111,41 @@
 .venv/Scripts/python.exe -m compileall -q hnust_exam tests main.py
 ```
 
-推荐打包方式：
+> **测试不许碰用户真实数据**。`tests/conftest.py` 里有一个 autouse 的
+> `isolate_user_data` fixture，会把 `~/.hnust_exam` 下的配置、进度、题库路径
+> 全部重定向到临时目录。新增测试直接依赖它就行，不用自己再 patch 一遍；
+> 如果新加了从 `_CONFIG_DIR` / `QUESTION_BANK_DIR` 派生的路径常量，
+> 记得同步补进那个 fixture。
+>
+> 历史上踩过两次坑：一次是测试把假数据写进了真实 `manifest.json`，一次是
+> `settings_dialog._get_current_version()` 里的 `importlib.reload(constants)`
+> 把运行期改过的路径常量打回初值，导致测试把配置写到了真实目录。前者靠这个
+> fixture 兜住，后者已改成只扫源文件、不再 reload。
+
+推荐打包方式（优先使用 .spec 文件）：
 
 ```powershell
 .venv/Scripts/pyinstaller.exe HNUST仿真平台.spec
 ```
 
-备用完整打包命令：
+> .spec 文件采用精简策略：PySide6 只引入实际使用的 5 个子模块（QtCore/QtGui/QtWidgets/QtSvg/QtSvgWidgets），
+> 避免 collect_all 拖入 WebEngine（~195MB）等无用组件。numpy/pandas/requests 等由 PyInstaller
+> 的 import graph 自动发现。仅显式补充 `openpyxl`（hidden import）和 `certifi` 的 `cacert.pem`（SSL 证书）。
+>
+> QtSvg / QtSvgWidgets / QtXml 是 qfluentwidgets 带来的（`SettingCard` 用了 `QSvgWidget`，
+> `common/icon.py` 用了 QtXml）。qfluentwidgets 的样式和图标都内嵌在 `.py` 里，包内没有任何
+> 数据文件，所以**不需要** `collect_data_files("qfluentwidgets")`。
+> 它自带的 `qfluentwidgets.multimedia` 子包会拉 QtMultimedia，但顶层 `__init__` 并不导入它，
+> 正常使用不会被打进包里——实测确认过，别顺手加 collect_all。
+
+备用打包命令（不使用 .spec 文件时）：
 
 ```powershell
-.venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库" --add-data "icon.ico;." --collect-all PySide6 --hidden-import PySide6.QtCore --hidden-import PySide6.QtGui --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtNetwork --runtime-tmpdir "%TEMP%\HNUST_simulation_temp" main.py
+.venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库" --add-data "icon.ico;." --add-data "hnust_exam/resources;hnust_exam/resources" --hidden-import PySide6.QtCore --hidden-import PySide6.QtGui --hidden-import PySide6.QtWidgets --hidden-import openpyxl --collect-data certifi --runtime-tmpdir "%TEMP%\HNUST_simulation_temp" main.py
 ```
+
+> `--collect-data certifi` 是必需的：SSL 根证书 `cacert.pem` 不会被 PyInstaller 自动收集，
+> 缺失会导致 HTTPS 请求（更新检查、遥测等）运行时失败。其余依赖通过 import graph 自动发现。
 
 打包产物：
 
@@ -185,6 +209,30 @@ dist/HNUST仿真平台.exe
 - 默认值放在 `hnust_exam/services/config_manager.py` 的 `DEFAULTS`。
 - UI 控件通常放在 `hnust_exam/views/dialogs/settings_dialog.py`。
 - 读取设置的位置要就近查找，不要引入全局状态。
+
+> 设置页用的是 qfluentwidgets。三个坑：
+>
+> 1. `SettingCardGroup` 内部的 `ExpandLayout` 用 `widget.height()`（**当前**高度）
+>    累加分组高度，而不是 `sizeHint()`。标准 `SettingCard` 靠 `setFixedHeight`
+>    兜底，所以自定义卡片（`_SectionCard`）必须在内容填完后调用
+>    `sync_height()`，否则会被压扁成一条空白。内容显隐/字号变化后也要再调一次。
+> 2. `app.py` 的全局 QSS 只给 `QMainWindow` 上底色，`QDialog` 拿不到；而且它会
+>    样式化 `QPushButton`/`QLineEdit` 等基础类。设置对话框靠 `_apply_local_style()`
+>    自己下发底色和中性化规则，切换主题预览时要重新调一次。
+> 3. **主题色要对齐**。qfluentwidgets 自带主色是青色 `#009faa`，和 `Theme.PRIMARY`
+>    （浅色 `#0078d7` / 深色 `#4da6ff`）不是一回事，不对齐的话设置页的开关、滑块、
+>    进度条、主按钮会和软件其它部分两个色。`_sync_fluent_theme()` 负责这件事，
+>    主题变化时要重新调。
+>
+>    已知差异：浅色下渲染出来和 `Theme.PRIMARY` **完全一致**；深色下
+>    `ThemeColor.PRIMARY.color()` 会做一次 `s *= 0.84, v = 1` 的变换（库为了让
+>    深色背景上的强调色不刺眼，是刻意设计），实际画出来略淡（`#4da6ff` → `#69b4ff`）。
+>    色相一致，**不要反向补偿**——那等于把库的内部实现细节焊死在代码里。
+>
+>    `setThemeColor()` 必须带 `save=False`（这也是它的默认值，别改）：qfluentwidgets
+>    的配置文件默认落在**相对路径** `config/config.json`，也就是进程当前目录，
+>    带 `save=True` 会在用户的工作目录里拉一坨垃圾。`tests/test_settings_dialog.py`
+>    里有对应用例锁住这几点。
 
 ## 5. 数据与文件安全
 

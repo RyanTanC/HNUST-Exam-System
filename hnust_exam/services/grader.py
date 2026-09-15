@@ -71,8 +71,16 @@ def strip_comments(code: str, lang: str) -> str:
     C: 移除 ``//`` 行注释和 ``/* */`` 块注释。
     """
     if lang.lower() == "python":
-        # 移除 # 行注释，保留字符串内的 #
-        return re.sub(r"#.*$", "", code, flags=re.MULTILINE)
+        try:
+            lines = code.splitlines(keepends=True)
+            readline = io.StringIO(code).readline
+            for tok in tokenize.generate_tokens(readline):
+                if tok.type == tokenize.COMMENT:
+                    line_idx = tok.start[0] - 1
+                    lines[line_idx] = lines[line_idx][:tok.start[1]]
+            return "".join(lines)
+        except tokenize.TokenError:
+            return code
     elif lang.lower() == "c":
         # 先移除块注释 /* ... */
         code = re.sub(r"/\*.*?\*/", "", code, flags=re.DOTALL)
@@ -365,6 +373,51 @@ def check_output(user_code: str, expected_output: str, lang: str) -> float:
     return _compare_outputs(user_output, expected_output)
 
 
+def _run_limited(
+    args: list[str],
+    *,
+    input_data: bytes | None = None,
+    timeout: int = 5,
+    preexec_fn=None,
+) -> subprocess.CompletedProcess | None:
+    """运行外部程序，超时时清理进程树."""
+    creationflags = 0
+    if os.name == "nt":
+        creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
+        if hasattr(subprocess, "CREATE_NO_WINDOW"):
+            creationflags |= subprocess.CREATE_NO_WINDOW
+
+    proc = subprocess.Popen(
+        args,
+        stdin=subprocess.PIPE if input_data is not None else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        preexec_fn=preexec_fn,
+        creationflags=creationflags,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=input_data, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            if os.name == "nt":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    timeout=2,
+                )
+            else:
+                proc.kill()
+        except Exception:
+            pass
+        try:
+            proc.communicate(timeout=3)
+        except Exception:
+            pass
+        return None
+    return subprocess.CompletedProcess(args, proc.returncode, stdout, stderr)
+
+
 def _execute_code(code: str, lang: str) -> str | None:
     """执行代码并返回 stdout，失败返回 None."""
     lang = lang.lower().strip()
@@ -382,13 +435,12 @@ def _execute_code(code: str, lang: str) -> str | None:
 
     try:
         if lang == "python":
-            proc = subprocess.run(
+            proc = _run_limited(
                 [sys.executable, "-c", code],
-                capture_output=True,
                 timeout=5,
                 preexec_fn=preexec,
             )
-            if proc.returncode == 0:
+            if proc is not None and proc.returncode == 0:
                 return proc.stdout.decode("utf-8", errors="replace")
             return None
         elif lang == "c":
@@ -408,13 +460,12 @@ def _execute_code(code: str, lang: str) -> str | None:
                 )
                 if comp.returncode != 0:
                     return None
-                proc = subprocess.run(
+                proc = _run_limited(
                     [exe_path],
-                    capture_output=True,
                     timeout=5,
                     preexec_fn=preexec,
                 )
-                if proc.returncode == 0:
+                if proc is not None and proc.returncode == 0:
                     return proc.stdout.decode("utf-8", errors="replace")
                 return None
             finally:

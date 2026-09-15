@@ -645,21 +645,31 @@ PythonProject1/
 --------------------------------------------------------------------------------
   在 PyCharm 终端输入以下命令（整行复制粘贴）：
 
-.venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库"
-  --add-data "icon.ico;." --add-data "hnust_exam/resources;hnust_exam/resources" --hidden-import PySide6.QtCore
-  --hidden-import PySide6.QtGui --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtNetwork --runtime-tmpdir
-  "%TEMP%\HNUST_simulation_temp" main.py
-  参数解释：
-  --onefile     = 打包成单个 .exe 文件（不加的话会生成一堆文件）
-  --windowed    = 运行时不显示黑色命令行窗口
-  --icon=icon.ico = 使用 icon.ico 作为程序图标
-  --name "HNUST仿真平台" = 生成的 exe 文件名叫这个
-  --add-data "题库;题库" = 把题库文件夹一起打包进去
-  main.py       = 要打包的入口文件
+.venv/Scripts/pyinstaller.exe HNUST仿真平台.spec
 
-  ⚠️ 注意：不要加 --runtime-tmpdir 参数！
-     加了会导致多实例冲突（第二个实例会覆盖第一个的临时文件）。
-     PyInstaller 默认每个实例用随机的 _MEIxxxx 目录，互不干扰。
+   参数解释：
+   .spec 文件走的是「精简策略」：PySide6 只引入实际用到的 5 个子模块
+   （QtCore / QtGui / QtWidgets / QtSvg / QtSvgWidgets），不做 collect_all，
+   避免把 WebEngine（约 195MB）之类用不上的组件拖进来。
+   numpy、pandas、requests 这些由 PyInstaller 自动分析 import 关系发现，
+   不用手动写。
+   另外单独收集了 certifi 的 cacert.pem（HTTPS 根证书，不收集的话
+   检查更新、遥测等联网功能运行时会失败）。
+
+   如果不想用 .spec 文件，也可以用以下完整命令（功能完全一样）：
+
+.venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库" --add-data "icon.ico;." --add-data "hnust_exam/resources;hnust_exam/resources" --hidden-import openpyxl --hidden-import PySide6.QtSvg --hidden-import PySide6.QtSvgWidgets --hidden-import PySide6.QtXml --collect-data certifi main.py
+
+   --onefile        = 打包成单个 .exe 文件
+   --windowed       = 运行时不显示黑色命令行窗口
+   --add-data       = 把题库、图标、资源目录一起打进去
+   --hidden-import  = 显式声明自动分析可能漏掉的模块
+                      （QtSvg / QtSvgWidgets / QtXml 是界面组件库 qfluentwidgets
+                        需要的，缺了打包后打开设置页会报错）
+   --collect-data   = 只收集指定包的数据文件（certifi 的根证书必须收）
+
+   注意：不要用 --collect-all PySide6。那样会把 WebEngine 等一大堆用不到的
+   组件一起打进去，exe 会从 90MB 左右膨胀到 300MB 以上。
 
 --------------------------------------------------------------------------------
 5.4  找到打包好的 exe
@@ -674,40 +684,59 @@ PythonProject1/
 --------------------------------------------------------------------------------
 
   问题1："ModuleNotFoundError: No module named 'xxx'"
-  解决：在打包命令末尾加上 --hidden-import=xxx
-       比如：--hidden-import=openpyxl
+  解决：把这个模块名加进 .spec 文件里的 _all_hiddenimports 列表
+       （它会被传给 Analysis 的 hiddenimports），比如：
+       _all_hiddenimports = [
+           "PySide6.QtCore",
+           ...
+           "openpyxl",
+           "缺的那个模块名",      ← 加这一行
+       ]
+       注意：用 .spec 打包时，命令行的 --hidden-import 是**不生效**的
+       （PyInstaller 会忽略它），必须改 spec 文件本身。
+       只有不用 .spec、纯手写命令时，才用 --hidden-import=xxx。
 
   问题2："题库文件夹找不到"
   解决：确认 --add-data 参数格式正确：
        Windows 用分号：--add-data "题库;题库"
        Mac/Linux 用冒号：--add-data "题库:题库"
+       （用 .spec 的话，对应的位置是 datas 列表）
 
   问题3："打包后运行闪退"
   解决：
-  1. 先不加 --windowed 打包，这样能看到报错信息
-  2. 命令改为：
-     .venv/Scripts/pyinstaller.exe --onefile --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库" main.py
-  3. 运行 exe，看黑色窗口里的报错信息
-  4. 根据报错信息修复
+  1. 先把 spec 里的 console=False 临时改成 console=True，这样能看到报错信息
+  2. 重新打包，运行 exe，看黑色窗口里的报错信息
+  3. 根据报错信息修复，改完再把 console 改回 False
 
   问题4："打包后太大了"
   解决：这是正常的，PyInstaller 会把 Python 解释器一起打包。
-       一般 50-100MB 是正常的。
+       当前版本大约 90MB 属于正常范围。
+       如果明显超过 150MB，多半是不小心用了 --collect-all PySide6，
+       把它去掉就能瘦回去。
 
   问题5："想减少打包体积"
-  解决：加 --exclude-module 排除不需要的模块：
-     .venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico --name "HNUST仿真平台" --add-data "题库;题库" --exclude-module matplotlib --exclude-module scipy main.py
+  解决：在 spec 的 excludes 列表里加不需要的模块，比如：
+       excludes=["matplotlib", "scipy"],
+       （同样注意：用 .spec 时命令行的 --exclude-module 不生效）
 
 --------------------------------------------------------------------------------
-5.6  更简单的打包方式（用 .spec 文件）
+5.6  更简单的打包方式（用 .spec 文件）— 推荐
 --------------------------------------------------------------------------------
-  项目里已经有一个 HNUST仿真平台.spec 文件。
-  你可以重新生成一个新的：
+   项目里已经有一个 HNUST仿真平台.spec 文件，是最省事也最稳的打包方式。
 
-  1. 先执行一次上面的打包命令，会自动生成 .spec 文件
-  2. 下次打包可以直接用：
-     .venv/Scripts/pyinstaller.exe HNUST仿真平台.spec
-  3. 如果改了代码，只需要重新打包 main.py 和 hnust_exam 文件夹就行
+   直接运行：
+      .venv/Scripts/pyinstaller.exe HNUST仿真平台.spec
+
+   不需要手动加 --hidden-import 或 --collect-data，.spec 里已经配好了：
+   · PySide6 只引入实际用到的 5 个子模块，不拖 WebEngine 那些用不上的
+   · certifi 的根证书（HTTPS 必需）单独收集
+   · 题库、图标、资源目录自动带上
+
+   打包产物约 90MB，这是正常的（Python 解释器 + Qt 运行库都在里面）。
+
+   另外，如果打包时报错说某个文件被占用、或者构建中途停住，可以在命令里
+   加一个干净的工作目录，让 PyInstaller 不用去清理旧的缓存：
+      .venv/Scripts/pyinstaller.exe HNUST仿真平台.spec --workpath C:\tmp\pyi_work --distpath dist
 
 --------------------------------------------------------------------------------
 5.7  打包后分发给别人
@@ -974,15 +1003,23 @@ PythonProject1/
   图片打包不需要额外参数，因为 --add-data "题库;题库" 已经将整个
   题库/ 目录包含进去了，试题图片/ 作为子目录自动被打包。
 
-  打包命令（和之前一样）：
+  打包命令（推荐直接用项目里的 .spec，图片会自动带上）：
+  .venv/Scripts/pyinstaller.exe HNUST仿真平台.spec
+
+  如果坚持手写命令，等价写法是：
   .venv/Scripts/pyinstaller.exe --onefile --windowed --icon=icon.ico ^
     --name "HNUST仿真平台" ^
     --add-data "题库;题库" ^
     --add-data "icon.ico;." ^
-    --collect-all PySide6 ^
-    --hidden-import PySide6.QtCore --hidden-import PySide6.QtGui ^
-    --hidden-import PySide6.QtWidgets --hidden-import PySide6.QtNetwork ^
+    --add-data "hnust_exam/resources;hnust_exam/resources" ^
+    --hidden-import openpyxl ^
+    --hidden-import PySide6.QtSvg ^
+    --hidden-import PySide6.QtSvgWidgets ^
+    --hidden-import PySide6.QtXml ^
+    --collect-data certifi ^
     main.py
+
+  （不要加 --collect-all PySide6，会把用不上的组件一起打进去，体积翻好几倍。）
 
   运行时的图片路径解析：
   · 开发环境（python main.py）：自动查找 题库/试题图片/ 目录
@@ -1199,7 +1236,7 @@ PythonProject1/
      python scripts/build_resource_pack.py --clean
 
   3. 去 GitHub 创建 Release：
-     · Tag 填版本号，如 2026.05.28
+     · Tag 填版本号，如 2026.05.29.1430（必须四段 YYYY.MM.DD.HHMM，否则客户端拒绝更新）
      · 上传 dist/question_bank.zip
      · 上传 dist/question_bank.zip.sha256
      · 点"Publish release"
@@ -1208,8 +1245,13 @@ PythonProject1/
 
   构建脚本支持的参数：
      python scripts/build_resource_pack.py --clean          ← 清理旧产物后构建
-     python scripts/build_resource_pack.py --version 2026.05.29  ← 指定版本号
+     python scripts/build_resource_pack.py --version 2026.05.29.1430  ← 指定版本号
      python scripts/build_resource_pack.py -v               ← 显示详细日志
+
+  版本号格式（重要）：
+     必须为四段 YYYY.MM.DD.HHMM，例如 2026.05.29.1430。
+     不传 --version 时脚本自动取当前时间生成。
+     三段（如 2026.05.28）会被客户端校验拒绝，脚本会直接报错退出。
 
   构建产物：
      dist/question_bank.zip          ← 资源包（上传到 GitHub Release）
@@ -1296,7 +1338,7 @@ PythonProject1/
   方式一：网页上传（推荐新手）
   1. 打开 https://github.com/RyanTanC/HNUST-Exam-System/releases
   2. 点 "Draft a new release"
-  3. Tag 填版本号（如 2026.05.28），选 "Create new tag on publish"
+  3. Tag 填版本号（如 2026.05.29.1430，必须四段 YYYY.MM.DD.HHMM），选 "Create new tag on publish"
   4. Release title 填版本号
   5. Description 填更新说明
   6. 拖入以下文件：
@@ -1309,11 +1351,11 @@ PythonProject1/
   1. 安装 GitHub CLI：winget install GitHub.cli
   2. 登录：gh auth login
   3. 创建 Release 并上传：
-     gh release create 2026.05.28 \
+     gh release create 2026.05.29.1430 \
        dist/question_bank.zip \
        dist/question_bank.zip.sha256 \
        dist/HNUST仿真平台.exe \
-       --title "2026.05.28" \
+       --title "2026.05.29.1430" \
        --notes "更新说明"
 
 --------------------------------------------------------------------------------

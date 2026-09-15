@@ -6,8 +6,12 @@
 
 用法：
     python scripts/build_resource_pack.py
-    python scripts/build_resource_pack.py --version 2026.05.29
+    python scripts/build_resource_pack.py --version 2026.05.29.1430
     python scripts/build_resource_pack.py --clean
+
+版本号格式必须是 YYYY.MM.DD.HHMM（四段，如 2026.05.29.1430），与客户端
+hnust_exam.utils.constants.QUESTION_BANK_VERSION_PATTERN 保持一致。
+格式不符时本脚本会直接报错退出，避免打出的包被客户端拒绝更新。
 
 输出：
     dist/question_bank.zip        ← 上传到 GitHub Release
@@ -48,8 +52,20 @@ _HASH_PATH = _DIST_DIR / "question_bank.zip.sha256"
 # zip 内部的根目录名（可选，resource_pack_updater 兼容单层根目录）
 _ZIP_ROOT = "question_bank"
 
+# 版本号格式校验复用客户端常量，保证单一来源
+sys.path.insert(0, str(_PROJECT_ROOT))
+from hnust_exam.utils.constants import QUESTION_BANK_VERSION_PATTERN  # noqa: E402
+
 
 # ── 工具函数 ──────────────────────────────────────────────────────────
+
+
+def validate_version(version: str) -> bool:
+    """校验版本号是否为 YYYY.MM.DD.HHMM 格式.
+
+    客户端的 _validate_version_tag() 用的是同一个正则，格式不符会被拒绝更新。
+    """
+    return bool(QUESTION_BANK_VERSION_PATTERN.match(version))
 
 
 def sha256_file(path: Path) -> str:
@@ -69,18 +85,28 @@ def scan_source(source_dir: Path) -> dict[str, dict]:
     """扫描题库目录，返回 manifest.files 字典.
 
     key 是相对于 source_dir 的路径（正斜杠），不含 题库/ 前缀。
-    跳过：manifest.json、隐藏文件、__pycache__。
+    跳过：manifest.json、隐藏文件、__pycache__，以及位于隐藏/缓存目录内的文件
+    （例如 题库/ 是嵌套 git 仓库时的 .git/ 内容）。
     """
     files_info: dict[str, dict] = {}
 
     for p in sorted(source_dir.rglob("*")):
         if not p.is_file():
             continue
+        rel_parts = p.relative_to(source_dir).parts
         name = p.name
         # 跳过不需要打包的文件
         if name in ("manifest.json", ".DS_Store", "Thumbs.db"):
             continue
         if name.startswith(".") or name.startswith("__"):
+            continue
+        # 跳过父目录为隐藏/缓存目录的文件：rglob 会深入 .git/，而其中的
+        # 文件名（如 config、COMMIT_EDITMSG）本身不以点开头，仅按 name
+        # 过滤会把整个 .git 目录打进包里。
+        if any(
+            part.startswith(".") or part.startswith("__")
+            for part in rel_parts[:-1]
+        ):
             continue
 
         rel = p.relative_to(source_dir).as_posix()
@@ -176,7 +202,7 @@ def parse_args() -> argparse.Namespace:
         "--version",
         type=str,
         default=None,
-        help="资源包版本号，默认使用当天日期 YYYY.MM.DD",
+        help="资源包版本号，格式 YYYY.MM.DD.HHMM，默认使用当前时间",
     )
     parser.add_argument(
         "--clean",
@@ -202,8 +228,15 @@ def main() -> int:
         logger.error("题库目录不存在: %s", _SOURCE_DIR)
         return 1
 
-    # 版本号
-    version = args.version or datetime.now().strftime("%Y.%m.%d")
+    # 版本号（必须是 YYYY.MM.DD.HHMM，否则客户端会拒绝更新）
+    version = args.version or datetime.now().strftime("%Y.%m.%d.%H%M")
+    if not validate_version(version):
+        logger.error(
+            "版本号格式非法: %s（要求 YYYY.MM.DD.HHMM，例如 %s）",
+            version,
+            datetime.now().strftime("%Y.%m.%d.%H%M"),
+        )
+        return 1
     logger.info("资源包版本: %s", version)
 
     # 清理

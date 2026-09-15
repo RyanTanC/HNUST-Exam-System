@@ -17,6 +17,7 @@ from hnust_exam.services.grader import (
     strip_comments,
     get_program_tokens,
 )
+from hnust_exam.utils.helpers import normalize_answer
 from hnust_exam.models.exam import Exam
 from hnust_exam.models.question import Question
 
@@ -139,6 +140,31 @@ class TestGradeExam:
         assert results[0].is_correct is True
         assert results[0].earned_score == 4.0
 
+    def test_single_choice_with_bracket_prefix(self):
+        exam = self._make_exam([
+            {"number": "1", "type": "单选", "correct": "【仅供参考】A", "user": "A", "score": 2},
+            {"number": "2", "type": "单选", "correct": "【仅供参考】B", "user": "B", "score": 3},
+            {"number": "3", "type": "判断", "correct": "【仅供参考】A", "user": "对", "score": 2},
+        ])
+        results = grade_exam(exam)
+        assert results[0].is_correct is True
+        assert results[0].earned_score == 2.0
+        assert results[1].is_correct is True
+        assert results[1].earned_score == 3.0
+        assert results[2].is_correct is True
+        assert results[2].earned_score == 2.0
+
+    def test_single_choice_with_bracket_prefix_wrong(self):
+        exam = self._make_exam([
+            {"number": "1", "type": "单选", "correct": "【仅供参考】A", "user": "B", "score": 2},
+            {"number": "2", "type": "判断", "correct": "【仅供参考】A", "user": "错", "score": 2},
+        ])
+        results = grade_exam(exam)
+        assert results[0].is_correct is False
+        assert results[0].earned_score == 0.0
+        assert results[1].is_correct is False
+        assert results[1].earned_score == 0.0
+
     def test_unanswered(self):
         exam = self._make_exam([
             {"number": "1", "type": "单选", "correct": "A", "user": "", "score": 2},
@@ -259,6 +285,9 @@ class TestStripComments:
 
     def test_python_line_comment(self):
         assert strip_comments("print(1) # comment", "python") == "print(1) "
+
+    def test_python_preserves_hash_inside_string(self):
+        assert strip_comments('print("#hello") # comment', "python") == 'print("#hello") '
 
     def test_python_full_line_comment(self):
         assert strip_comments("# comment", "python") == ""
@@ -491,8 +520,9 @@ class TestCheckFillInSplitWord:
     def test_natural_language_jaccard(self):
         # 自然语言填空：断词匹配
         all_ok, matched, total = check_fill_in("the quick fox", "the quick brown fox", is_code=False)
-        # 部分词匹配
-        assert matched >= 0  # 至少不报错
+        assert all_ok is True
+        assert matched == 1
+        assert total == 1
 
     def test_multi_blank_partial(self):
         # 多空题：2空对1空

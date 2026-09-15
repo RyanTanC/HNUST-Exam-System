@@ -45,8 +45,8 @@ def test_scroll_area_scroller_properties(app):
     prop = scroller.scrollerProperties()
 
     frame_rate = prop.scrollMetric(QScrollerProperties.ScrollMetric.FrameRate)
-    assert frame_rate == QScrollerProperties.FrameRates.Fps60, \
-        "帧率应该设置为 Fps60"
+    assert frame_rate == QScrollerProperties.FrameRates.Standard, \
+        "帧率应该设置为 Standard 以适配高刷新率显示器"
 
 
 def test_welcome_page_scroll_smoothness(app):
@@ -119,7 +119,7 @@ def test_welcome_page_full_integration(app):
 
     prop = scroller.scrollerProperties()
     max_fps = prop.scrollMetric(QScrollerProperties.ScrollMetric.FrameRate)
-    assert max_fps == QScrollerProperties.FrameRates.Fps60
+    assert max_fps == QScrollerProperties.FrameRates.Standard
 
 
 def test_main_window_full_integration(app):
