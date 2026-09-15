@@ -381,10 +381,14 @@ class ResultPage(QWidget):
         bar.setFixedHeight(8)
         bar.setStyleSheet(f"{_NB}background:{color};border-radius:4px;")
 
-        fill = max(1, int(pct))
-        empty = max(1, 100 - fill)
-        self._prog_lay.addWidget(bar, fill)
-        self._prog_lay.addStretch(empty)
+        # 注意不要用 max(1, ...)：满分时 empty 会被强行撑成 1，
+        # 进度条右侧永远留 1px 空白。0 份就不添加，让条真正铺满。
+        fill = max(0, min(100, int(round(pct))))
+        empty = 100 - fill
+        if fill:
+            self._prog_lay.addWidget(bar, fill)
+        if empty:
+            self._prog_lay.addStretch(empty)
 
     # ─────────────── 摘要统计条 ───────────────
 

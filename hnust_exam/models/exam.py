@@ -36,15 +36,18 @@ class Exam:
             return f"读取Excel失败：{e}"
 
         df.columns = df.columns.str.strip()
+
+        # 必须在按列名过滤之前先检查缺列：下面 df["题号"] / df["题目"]
+        # 一旦列不存在会直接抛 KeyError 冒到调用方，而不是给出可读的提示。
+        missing = REQUIRED_COLUMNS - set(df.columns)
+        if missing:
+            return f"Excel 缺少必要列：{', '.join(missing)}\n当前列：{', '.join(df.columns)}"
+
         df = df.fillna("")
         for col in df.columns:
             df[col] = df[col].astype(str).str.strip()
         df = df[df["题号"] != ""]
         df = df[df["题目"] != ""]
-
-        missing = REQUIRED_COLUMNS - set(df.columns)
-        if missing:
-            return f"Excel 缺少必要列：{', '.join(missing)}\n当前列：{', '.join(df.columns)}"
 
         if "程序文件" in df.columns:
             df["程序文件"] = df["程序文件"].astype(str).str.strip()

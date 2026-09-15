@@ -306,10 +306,14 @@ def check_update_async(
     sig.result.connect(_on_signal)
 
     def _worker() -> None:
+        info = None
         try:
             info = fetch_update_info(config_manager)
-            sig.result.emit(info)
         except Exception as e:
             logger.warning("更新检查线程异常: %s", e)
+        finally:
+            # 必须保证回调一定触发（异常时投递 None，调用方按"网络不可用"处理），
+            # 否则调用方拿不到任何结果，界面会一直停在"检查中"。
+            sig.result.emit(info)
 
     Thread(target=_worker, daemon=True).start()

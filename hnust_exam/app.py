@@ -19,6 +19,13 @@ from hnust_exam.views.main_window import MainWindow
 
 def run() -> None:
     """启动应用."""
+    # 全局异常钩子必须最先注册：QApplication 创建之前抛的异常（高 DPI 设置、
+    # 资源初始化、日志初始化）同样要能落盘，否则用户只会看到"闪退"。
+    def _excepthook(exc_type, exc_value, exc_tb):
+        _log_crash(exc_type, exc_value, exc_tb)
+
+    sys.excepthook = _excepthook
+
     # ── 日志系统初始化 ──
     import logging
     from hnust_exam.utils.constants import LOG_DIR
@@ -113,12 +120,6 @@ def run() -> None:
     # 启动时检查题库整包热更新（从 Gitee Release 下载 zip 替换本地题库）
     from hnust_exam.services.resource_pack_updater import check_pack_update_async
     check_pack_update_async()
-
-    # 全局异常钩子
-    def _excepthook(exc_type, exc_value, exc_tb):
-        _log_crash(exc_type, exc_value, exc_tb)
-
-    sys.excepthook = _excepthook
 
     sys.exit(app.exec())
 

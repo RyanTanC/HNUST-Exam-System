@@ -3,6 +3,7 @@
 import os
 import sys
 import re
+import tempfile
 
 
 def get_resource_path(relative_path: str) -> str:
@@ -73,4 +74,6 @@ def get_log_dir() -> str:
         os.makedirs(log_dir, exist_ok=True)
         return log_dir
     except Exception:
-        return os.path.dirname(os.path.abspath(sys.argv[0]))
+        # 退回 exe 所在目录是不可靠的：装在 Program Files 或只读介质上时写不进去，
+        # 崩溃日志会彻底丢失。临时目录一定可写。
+        return tempfile.gettempdir()
