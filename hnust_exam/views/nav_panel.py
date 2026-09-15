@@ -195,6 +195,30 @@ class NavPanel(QWidget):
 
         layout.addWidget(self._frame)
 
+    # ── 分组面板样式（构建与刷新共用，避免两处写法漂移）────────
+
+    @staticmethod
+    def _sep_qss(c: dict) -> str:
+        return f"background-color: {c['BORDER']}; margin: 4px 0;"
+
+    @staticmethod
+    def _header_qss(c: dict) -> str:
+        return (
+            f"background-color: {c['NAV_HEADER_BG']}; padding: 4px; "
+            f"border-radius: 2px; border: none;"
+        )
+
+    @staticmethod
+    def _title_qss(c: dict) -> str:
+        return (
+            f"color: {c['TEXT']}; font-size: 10pt; font-weight: bold;"
+            f"border: none;"
+        )
+
+    @staticmethod
+    def _body_qss(c: dict) -> str:
+        return f"background-color: {c['WHITE']}; border: none;"
+
     def refresh_theme(self) -> None:
         """刷新主题颜色."""
         c = Theme.get_current_colors()
@@ -211,6 +235,18 @@ class NavPanel(QWidget):
         self._status_label.setStyleSheet(
             f"color: {c['MUTED']}; font-size: 9pt; padding: 6px 0 10px 0;"
         )
+        # 分组标题、分隔线、折叠箭头、按钮容器的颜色都是 _build_panels() 建面板时
+        # 写死的，refresh() 只重刷题目按钮、刷不到它们，这里逐个改回来。
+        # 注意是「原地改样式」而不是重建面板：重建会删掉还挂着入场淡入动画的控件，
+        # 动画的 finished 回调再去碰已析构的 QWidget 就会抛
+        # "Internal C++ object already deleted"。
+        for panel in self._panels.values():
+            if panel["sep"] is not None:
+                panel["sep"].setStyleSheet(self._sep_qss(c))
+            panel["header"].setStyleSheet(self._header_qss(c))
+            panel["arrow"].set_color(c["TEXT"])
+            panel["title"].setStyleSheet(self._title_qss(c))
+            panel["body"].setStyleSheet(self._body_qss(c))
         self.refresh()
 
     # ── 重置 ─────────────────────────────────────────────────
@@ -331,12 +367,11 @@ class NavPanel(QWidget):
             if not questions:
                 continue
 
+            sep = None
             if not first_type:
                 sep = QFrame()
                 sep.setFixedHeight(1)
-                sep.setStyleSheet(
-                    f"background-color: {c['BORDER']}; margin: 4px 0;"
-                )
+                sep.setStyleSheet(self._sep_qss(c))
                 self._nav_layout.insertWidget(
                     self._nav_layout.count() - 1, sep,
                 )
@@ -345,10 +380,7 @@ class NavPanel(QWidget):
             # ── 分组标题（可点击折叠/展开）──
             header = QFrame()
             header.setCursor(Qt.CursorShape.PointingHandCursor)
-            header.setStyleSheet(
-                f"background-color: {c['NAV_HEADER_BG']}; padding: 4px; "
-                f"border-radius: 2px; border: none;"
-            )
+            header.setStyleSheet(self._header_qss(c))
             header_layout = QHBoxLayout(header)
             header_layout.setContentsMargins(4, 2, 4, 2)
 
@@ -357,10 +389,7 @@ class NavPanel(QWidget):
             header_layout.addWidget(arrow)
 
             title_label = QLabel(f"{q_type}（{len(questions)}题）")
-            title_label.setStyleSheet(
-                f"color: {c['TEXT']}; font-size: 10pt; font-weight: bold;"
-                f"border: none;"
-            )
+            title_label.setStyleSheet(self._title_qss(c))
             header_layout.addWidget(title_label, 1)
 
             self._nav_layout.insertWidget(
@@ -369,7 +398,7 @@ class NavPanel(QWidget):
 
             # ── 题目按钮区 ──
             body = QFrame()
-            body.setStyleSheet(f"background-color: {c['WHITE']}; border: none;")
+            body.setStyleSheet(self._body_qss(c))
             body_layout = QVBoxLayout(body)
             body_layout.setContentsMargins(0, 0, 0, 0)
             body_layout.setSpacing(0)
@@ -411,6 +440,8 @@ class NavPanel(QWidget):
                 "header": header,
                 "arrow": arrow,
                 "body": body,
+                "sep": sep,
+                "title": title_label,
             }
 
         # 入场动画延迟到布局计算完成后

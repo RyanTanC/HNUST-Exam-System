@@ -33,6 +33,9 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self.config_mgr = config_mgr
 
+        # 主题改过之后「还留着旧主题内联样式、需要刷新」的页面索引（见 _refresh_theme）
+        self._theme_stale: set[int] = set()
+
         self.setWindowTitle("HNUST仿真平台 | 免费使用 禁止售卖")
         self.setMinimumSize(900, 600)
         self.resize(1200, 800)
@@ -83,6 +86,9 @@ class MainWindow(QMainWindow):
         current_index = self.stack.currentIndex()
         if current_index == page_index:
             return
+
+        # 主题改过之后这一页可能还留着旧主题的内联样式，切过去之前先刷掉
+        self._refresh_page(page_index)
 
         current_geometry = self.stack.geometry()
 
@@ -147,15 +153,35 @@ class MainWindow(QMainWindow):
         self._watermark_left.setStyleSheet(f"color: {c['MUTED']}; font-size: 7pt; padding: 2px;")
         self._watermark_right.setStyleSheet(f"color: {c['MUTED']}; font-size: 7pt; padding: 2px;")
 
-        # 刷新当前页面
-        current = self.stack.currentIndex()
-        if current == self.PAGE_WELCOME:
+        # 四个页面在构造时都把「当时的主题色」写死进了各自控件的内联 QSS，
+        # 全局样式表刷不到它们，必须逐页刷新。
+        # 不在前台的页面先记账，等真正切过去时再刷（见 _refresh_page），
+        # 免得为了看不见的页面白重建一遍控件。
+        self._theme_stale = {
+            self.PAGE_WELCOME,
+            self.PAGE_SELECT,
+            self.PAGE_EXAM,
+            self.PAGE_RESULT,
+        }
+        self._refresh_page(self.stack.currentIndex())
+
+    def _refresh_page(self, index: int) -> None:
+        """刷新指定页面的主题（只处理记账过的页面）.
+
+        刷新方式分两种：
+        - WelcomePage / SelectPage 没有 refresh_theme()，只能整体重建；
+        - ExamPage / ResultPage 有 refresh_theme()，原地改样式，考试/成绩状态不丢。
+        """
+        if index not in self._theme_stale:
+            return
+        self._theme_stale.discard(index)
+        if index == self.PAGE_WELCOME:
             self._rebuild_welcome()
-        elif current == self.PAGE_SELECT:
+        elif index == self.PAGE_SELECT:
             self._rebuild_select()
-        elif current == self.PAGE_EXAM:
+        elif index == self.PAGE_EXAM:
             self.exam_page.refresh_theme()
-        elif current == self.PAGE_RESULT:
+        elif index == self.PAGE_RESULT:
             self.result_page.refresh_theme()
 
     def _rebuild_welcome(self) -> None:
